@@ -35,9 +35,12 @@
         </form>
     </section>
 
-    <section class="card">
+    <section class="card" id="ranked-section">
         <div class="section-head">
             <h2 class="section-title">ランキング一覧</h2>
+        </div>
+        <div class="section-tools">
+            <a href="#unscored-section" class="btn btn-secondary btn-jump">未評価セクションへ</a>
         </div>
         <div class="view-toggle" role="group" aria-label="ランキング表示切り替え">
             <button type="button" class="toggle-btn js-rank-view-toggle" data-mode="flat" aria-pressed="true">統合ビュー</button>
@@ -85,9 +88,12 @@
         {% endif %}
     </section>
 
-    <section class="card">
+    <section class="card" id="unscored-section">
         <div class="section-head">
             <h2 class="section-title">これから見る・未評価</h2>
+        </div>
+        <div class="section-tools">
+            <a href="#ranked-section" class="btn btn-secondary btn-jump">ランキングへ戻る</a>
         </div>
         <p class="muted">点数が未入力の作品です。</p>
         {% if unscored_anime %}
