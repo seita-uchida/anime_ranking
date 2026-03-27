@@ -102,6 +102,31 @@
             margin: 0 0 8px;
         }
 
+        #inline-add-panel {
+            padding: 10px;
+            border: 1px solid #dccab4;
+            border-radius: 8px;
+            background: #f9f3ea;
+        }
+
+        .inline-add-form {
+            display: grid;
+            grid-template-columns: 1.8fr 1fr 0.8fr 0.8fr;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .add-url {
+            grid-column: 1 / 4;
+        }
+
+        .add-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
         .btn-jump {
             font-size: 0.78rem;
             padding: 6px 10px;
@@ -501,6 +526,18 @@
 
             .anime-grid {
                 grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+            }
+
+            .inline-add-form {
+                grid-template-columns: 1fr;
+            }
+
+            .add-url {
+                grid-column: auto;
+            }
+
+            .add-actions {
+                justify-content: stretch;
             }
         }
     </style>

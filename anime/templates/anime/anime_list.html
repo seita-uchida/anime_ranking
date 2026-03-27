@@ -4,6 +4,48 @@
 
 {% block content %}
 <div class="stack">
+    <section class="card" id="inline-add-section">
+        <div class="section-head">
+            <h2 class="section-title">新規追加</h2>
+        </div>
+        <div class="section-tools">
+            <button type="button" class="btn" id="inline-add-toggle" aria-expanded="false" aria-controls="inline-add-panel">追加フォームを表示</button>
+        </div>
+        <div id="inline-add-panel" hidden>
+            <form class="inline-add-form" id="inline-add-form">
+                <div class="add-field add-title">
+                    <label for="add-title" class="filter-label">タイトル</label>
+                    <input id="add-title" name="title" class="filter-input" type="text" maxlength="255" required>
+                </div>
+                <div class="add-field">
+                    <label for="add-score" class="filter-label">点数（空欄で未評価）</label>
+                    <input id="add-score" name="score" class="filter-input" type="number" min="0" max="100" step="0.1" value="{{ default_score }}">
+                </div>
+                <div class="add-field">
+                    <label for="add-year" class="filter-label">年度</label>
+                    <input id="add-year" name="year" class="filter-input" type="number" value="{{ current_year }}" required>
+                </div>
+                <div class="add-field">
+                    <label for="add-season" class="filter-label">シーズン</label>
+                    <select id="add-season" name="season" class="filter-input" required>
+                        {% for value, label in season_choices %}
+                            <option value="{{ value }}" {% if value == current_season %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="add-field add-url">
+                    <label for="add-image-url" class="filter-label">画像URL（任意）</label>
+                    <input id="add-image-url" name="image_url" class="filter-input" type="url">
+                </div>
+                <div class="add-actions">
+                    <button type="submit" class="btn" id="inline-add-submit">追加</button>
+                    <button type="button" class="btn btn-secondary" id="inline-add-hide">閉じる</button>
+                </div>
+            </form>
+            <p class="edit-error" id="inline-add-error" hidden></p>
+        </div>
+    </section>
+
     <section class="card filter-card">
         <form method="get" class="filter-form">
             <div class="filter-field">
@@ -50,8 +92,7 @@
         {% if selected_year or selected_season %}
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
         {% endif %}
-        {% if ranked_anime %}
-            <div class="anime-grid" id="ranked-grid" data-next-page="{{ ranked_next_page|default:'' }}" data-has-next="{{ ranked_has_next|yesno:'1,0' }}">
+        <div class="anime-grid" id="ranked-grid" data-next-page="{{ ranked_next_page|default:'' }}" data-has-next="{{ ranked_has_next|yesno:'1,0' }}">
             {% for anime in ranked_anime %}
                 <article class="anime-item js-anime-card" data-anime-id="{{ anime.id }}" data-zone="ranked">
                     {% if anime.image_url %}
@@ -79,13 +120,11 @@
                     </div>
                 </article>
             {% endfor %}
-            </div>
-            <div class="rank-columns" id="ranked-grouped" hidden></div>
-            <div class="infinite-status" id="ranked-status" hidden>読み込み中...</div>
-            <div class="infinite-sentinel" id="ranked-sentinel" aria-hidden="true"></div>
-        {% else %}
-            <p class="muted">まだ評価済み作品がありません。</p>
-        {% endif %}
+        </div>
+        <p class="muted" id="ranked-empty" {% if ranked_anime %}hidden{% endif %}>まだ評価済み作品がありません。</p>
+        <div class="rank-columns" id="ranked-grouped" hidden></div>
+        <div class="infinite-status" id="ranked-status" hidden>読み込み中...</div>
+        <div class="infinite-sentinel" id="ranked-sentinel" aria-hidden="true"></div>
     </section>
 
     <section class="card" id="unscored-section">
@@ -96,8 +135,7 @@
             <a href="#ranked-section" class="btn btn-secondary btn-jump">ランキングへ戻る</a>
         </div>
         <p class="muted">点数が未入力の作品です。</p>
-        {% if unscored_anime %}
-            <div class="anime-grid" id="unscored-grid" data-next-page="{{ unscored_next_page|default:'' }}" data-has-next="{{ unscored_has_next|yesno:'1,0' }}">
+        <div class="anime-grid" id="unscored-grid" data-next-page="{{ unscored_next_page|default:'' }}" data-has-next="{{ unscored_has_next|yesno:'1,0' }}">
             {% for anime in unscored_anime %}
                 <article class="anime-item js-anime-card" data-anime-id="{{ anime.id }}" data-zone="unscored">
                     {% if anime.image_url %}
@@ -123,12 +161,10 @@
                     </div>
                 </article>
             {% endfor %}
-            </div>
-            <div class="infinite-status" id="unscored-status" hidden>読み込み中...</div>
-            <div class="infinite-sentinel" id="unscored-sentinel" aria-hidden="true"></div>
-        {% else %}
-            <p class="muted">未評価作品はありません。</p>
-        {% endif %}
+        </div>
+        <p class="muted" id="unscored-empty" {% if unscored_anime %}hidden{% endif %}>未評価作品はありません。</p>
+        <div class="infinite-status" id="unscored-status" hidden>読み込み中...</div>
+        <div class="infinite-sentinel" id="unscored-sentinel" aria-hidden="true"></div>
     </section>
 </div>
 
@@ -139,6 +175,9 @@
     const RANK_ORDER = ["S", "A", "B", "C", "F"];
     const FILTER_YEAR = "{{ selected_year|escapejs }}";
     const FILTER_SEASON = "{{ selected_season|escapejs }}";
+    const INLINE_DEFAULT_YEAR = "{{ current_year|escapejs }}";
+    const INLINE_DEFAULT_SEASON = "{{ current_season|escapejs }}";
+    const INLINE_DEFAULT_SCORE = "{{ default_score|escapejs }}";
     let isRankSplitMode = false;
     let rankedSortable = null;
     let rankBucketSortables = [];
@@ -248,9 +287,25 @@
         card.dataset.zone = newZone;
         if (newZone === "ranked" && isRankSplitMode) {
             placeCardInRankBucket(card);
+            updateEmptyMessages();
             return;
         }
         targetGrid.prepend(card);
+        updateEmptyMessages();
+    }
+
+    function updateEmptyMessages() {
+        const rankedGrid = document.getElementById("ranked-grid");
+        const unscoredGrid = document.getElementById("unscored-grid");
+        const rankedEmpty = document.getElementById("ranked-empty");
+        const unscoredEmpty = document.getElementById("unscored-empty");
+
+        if (rankedGrid && rankedEmpty) {
+            rankedEmpty.hidden = rankedGrid.querySelectorAll(".js-anime-card").length > 0;
+        }
+        if (unscoredGrid && unscoredEmpty) {
+            unscoredEmpty.hidden = unscoredGrid.querySelectorAll(".js-anime-card").length > 0;
+        }
     }
 
     function getCardRank(card) {
@@ -493,6 +548,7 @@
             }
 
             card.remove();
+            updateEmptyMessages();
         } catch (err) {
             error.textContent = err.message;
             error.hidden = false;
@@ -566,6 +622,7 @@
             if (fragment.childNodes.length > 0) {
                 grid.appendChild(fragment);
             }
+            updateEmptyMessages();
 
             grid.dataset.hasNext = data.has_next ? "1" : "0";
             grid.dataset.nextPage = data.next_page || "";
@@ -661,11 +718,115 @@
         });
     }
 
+    async function createAnimeInline(form) {
+        const error = document.getElementById("inline-add-error");
+        const submit = document.getElementById("inline-add-submit");
+
+        const formData = new FormData(form);
+        const payload = {
+            title: (formData.get("title") || "").toString().trim(),
+            score: (formData.get("score") || "").toString().trim(),
+            year: (formData.get("year") || "").toString().trim(),
+            season: (formData.get("season") || "").toString().trim(),
+            image_url: (formData.get("image_url") || "").toString().trim(),
+        };
+
+        submit.disabled = true;
+        error.hidden = true;
+        error.textContent = "";
+
+        try {
+            const response = await fetch("/api/anime/inline-create/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "追加に失敗しました。");
+            }
+
+            const anime = data.anime;
+            const zone = anime.score ? "ranked" : "unscored";
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = createCardHtml(anime, zone).trim();
+            const card = wrapper.firstElementChild;
+            if (!card) {
+                throw new Error("カード作成に失敗しました。");
+            }
+
+            attachCardEvents(card);
+            if (zone === "ranked") {
+                const rankedGrid = document.getElementById("ranked-grid");
+                if (isRankSplitMode) {
+                    placeCardInRankBucket(card);
+                } else if (rankedGrid) {
+                    rankedGrid.prepend(card);
+                }
+            } else {
+                const unscoredGrid = document.getElementById("unscored-grid");
+                if (unscoredGrid) {
+                    unscoredGrid.prepend(card);
+                }
+            }
+
+            form.reset();
+            const yearInput = document.getElementById("add-year");
+            const seasonInput = document.getElementById("add-season");
+            const scoreInput = document.getElementById("add-score");
+            if (yearInput) yearInput.value = INLINE_DEFAULT_YEAR;
+            if (seasonInput) seasonInput.value = INLINE_DEFAULT_SEASON;
+            if (scoreInput) scoreInput.value = INLINE_DEFAULT_SCORE;
+            updateEmptyMessages();
+        } catch (err) {
+            error.textContent = err.message;
+            error.hidden = false;
+        } finally {
+            submit.disabled = false;
+        }
+    }
+
+    function setupInlineAddForm() {
+        const form = document.getElementById("inline-add-form");
+        const panel = document.getElementById("inline-add-panel");
+        const toggleBtn = document.getElementById("inline-add-toggle");
+        const hideBtn = document.getElementById("inline-add-hide");
+        if (!form || !panel || !toggleBtn || !hideBtn) {
+            return;
+        }
+
+        const setPanelOpen = (open) => {
+            panel.hidden = !open;
+            toggleBtn.textContent = open ? "追加フォームを隠す" : "追加フォームを表示";
+            toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        };
+
+        toggleBtn.addEventListener("click", () => {
+            setPanelOpen(panel.hidden);
+        });
+
+        hideBtn.addEventListener("click", () => {
+            setPanelOpen(false);
+        });
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            createAnimeInline(form);
+        });
+
+        setPanelOpen(false);
+    }
+
     document.querySelectorAll(".js-anime-card").forEach((card) => attachCardEvents(card));
     setupDragSort();
     setupRankBucketSorts();
     setupRankViewToggle();
+    setupInlineAddForm();
     applyRankViewMode("flat");
+    updateEmptyMessages();
     setupInfiniteScroll("ranked");
     setupInfiniteScroll("unscored");
 })();

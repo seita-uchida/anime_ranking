@@ -1,10 +1,12 @@
 import json
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Anime
@@ -51,9 +53,25 @@ def _serialize_anime(anime):
 	}
 
 
+def _current_year_and_season():
+	# Use local timezone date so defaults match user-facing current season.
+	today = timezone.localdate() if timezone.is_aware(timezone.now()) else datetime.now().date()
+	month = today.month
+	if 3 <= month <= 5:
+		season = "春"
+	elif 6 <= month <= 8:
+		season = "夏"
+	elif 9 <= month <= 11:
+		season = "秋"
+	else:
+		season = "冬"
+	return today.year, season
+
+
 @login_required
 def anime_list(request):
 	base_queryset, selected_year, selected_season = _get_filtered_queryset(request)
+	current_year, current_season = _current_year_and_season()
 
 	ranked_qs = base_queryset.filter(score__isnull=False).order_by(
 		"-score", "-year", "season", "title"
@@ -80,6 +98,9 @@ def anime_list(request):
 			"season_choices": Anime.SEASON_CHOICES,
 			"selected_year": selected_year,
 			"selected_season": selected_season,
+			"current_year": current_year,
+			"current_season": current_season,
+			"default_score": "80.0",
 		},
 	)
 
@@ -175,6 +196,58 @@ def anime_inline_update(request, anime_id):
 			},
 		}
 	)
+
+
+@login_required
+@require_POST
+def anime_inline_create(request):
+	try:
+		payload = json.loads(request.body.decode("utf-8"))
+	except (json.JSONDecodeError, UnicodeDecodeError):
+		return JsonResponse({"ok": False, "error": "JSON形式が不正です。"}, status=400)
+
+	title = str(payload.get("title", "")).strip()
+	image_url = str(payload.get("image_url", "")).strip()
+	year_raw = payload.get("year")
+	season = str(payload.get("season", "")).strip()
+	score_raw = payload.get("score")
+
+	if not title:
+		return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
+	if len(title) > 255:
+		return JsonResponse({"ok": False, "error": "タイトルが長すぎます。"}, status=400)
+
+	try:
+		year = int(year_raw)
+	except (TypeError, ValueError):
+		return JsonResponse({"ok": False, "error": "年度は数値で入力してください。"}, status=400)
+
+	valid_seasons = {choice[0] for choice in Anime.SEASON_CHOICES}
+	if season not in valid_seasons:
+		return JsonResponse({"ok": False, "error": "シーズンが不正です。"}, status=400)
+
+	parsed_score = None
+	if score_raw not in (None, ""):
+		try:
+			parsed_score = Decimal(str(score_raw))
+		except (InvalidOperation, ValueError):
+			return JsonResponse({"ok": False, "error": "点数は数値で入力してください。"}, status=400)
+
+		if parsed_score < Decimal("0.0") or parsed_score > Decimal("100.0"):
+			return JsonResponse({"ok": False, "error": "点数は0.0〜100.0で入力してください。"}, status=400)
+		if parsed_score.as_tuple().exponent < -1:
+			return JsonResponse({"ok": False, "error": "点数は0.1刻みで入力してください。"}, status=400)
+		parsed_score = parsed_score.quantize(Decimal("0.1"))
+
+	anime = Anime.objects.create(
+		title=title,
+		image_url=image_url,
+		year=year,
+		season=season,
+		score=parsed_score,
+	)
+
+	return JsonResponse({"ok": True, "anime": _serialize_anime(anime)})
 
 
 @login_required
