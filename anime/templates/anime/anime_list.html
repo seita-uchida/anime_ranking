@@ -39,6 +39,10 @@
         <div class="section-head">
             <h2 class="section-title">ランキング一覧</h2>
         </div>
+        <div class="view-toggle" role="group" aria-label="ランキング表示切り替え">
+            <button type="button" class="toggle-btn js-rank-view-toggle" data-mode="flat" aria-pressed="true">統合ビュー</button>
+            <button type="button" class="toggle-btn js-rank-view-toggle" data-mode="split" aria-pressed="false">ランク別ビュー</button>
+        </div>
         <p class="muted">画像の下にタイトル・ランク・点数を表示します。ドラッグで順位変更できます。</p>
         {% if selected_year or selected_season %}
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
@@ -73,6 +77,7 @@
                 </article>
             {% endfor %}
             </div>
+            <div class="rank-columns" id="ranked-grouped" hidden></div>
             <div class="infinite-status" id="ranked-status" hidden>読み込み中...</div>
             <div class="infinite-sentinel" id="ranked-sentinel" aria-hidden="true"></div>
         {% else %}
@@ -125,8 +130,11 @@
 <script>
 (() => {
     const RANK_CLASSES = ["rank-S", "rank-A", "rank-B", "rank-C", "rank-F", "unscored"];
+    const RANK_ORDER = ["S", "A", "B", "C", "F"];
     const FILTER_YEAR = "{{ selected_year|escapejs }}";
     const FILTER_SEASON = "{{ selected_season|escapejs }}";
+    let isRankSplitMode = false;
+    let rankedSortable = null;
 
     function escapeHtml(value) {
         return String(value)
@@ -218,6 +226,9 @@
     function moveCardByZone(card, newScore) {
         const newZone = newScore === null ? "unscored" : "ranked";
         if (card.dataset.zone === newZone) {
+            if (newZone === "ranked" && isRankSplitMode) {
+                placeCardInRankBucket(card);
+            }
             return;
         }
 
@@ -228,7 +239,106 @@
         }
 
         card.dataset.zone = newZone;
+        if (newZone === "ranked" && isRankSplitMode) {
+            placeCardInRankBucket(card);
+            return;
+        }
         targetGrid.prepend(card);
+    }
+
+    function getCardRank(card) {
+        const badge = card.querySelector(".js-rank-badge");
+        if (!badge) {
+            return "F";
+        }
+        const rank = badge.textContent.trim();
+        return RANK_ORDER.includes(rank) ? rank : "F";
+    }
+
+    function ensureRankBuckets() {
+        const groupedRoot = document.getElementById("ranked-grouped");
+        if (!groupedRoot || groupedRoot.childElementCount > 0) {
+            return groupedRoot;
+        }
+
+        RANK_ORDER.forEach((rank) => {
+            const column = document.createElement("section");
+            column.className = "rank-column";
+            column.dataset.rank = rank;
+
+            const title = document.createElement("h3");
+            title.className = `rank-column-title rank-${rank}`;
+            title.textContent = `${rank}ランク`;
+
+            const bucket = document.createElement("div");
+            bucket.className = "rank-column-grid";
+            bucket.dataset.rankBucket = rank;
+
+            column.appendChild(title);
+            column.appendChild(bucket);
+            groupedRoot.appendChild(column);
+        });
+
+        return groupedRoot;
+    }
+
+    function placeCardInRankBucket(card) {
+        const groupedRoot = ensureRankBuckets();
+        if (!groupedRoot) {
+            return;
+        }
+        const rank = getCardRank(card);
+        const bucket = groupedRoot.querySelector(`[data-rank-bucket="${rank}"]`);
+        if (bucket) {
+            bucket.appendChild(card);
+        }
+    }
+
+    function setToggleState(mode) {
+        document.querySelectorAll(".js-rank-view-toggle").forEach((btn) => {
+            const active = btn.dataset.mode === mode;
+            btn.classList.toggle("is-active", active);
+            btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+    }
+
+    function updateDragAvailability() {
+        if (!rankedSortable) {
+            return;
+        }
+        rankedSortable.option("disabled", isRankSplitMode);
+    }
+
+    function applyRankViewMode(mode) {
+        const rankedGrid = document.getElementById("ranked-grid");
+        const groupedRoot = ensureRankBuckets();
+        if (!rankedGrid || !groupedRoot) {
+            return;
+        }
+
+        if (mode === "split") {
+            isRankSplitMode = true;
+            const cards = Array.from(rankedGrid.querySelectorAll(".js-anime-card"));
+            cards.forEach((card) => placeCardInRankBucket(card));
+            rankedGrid.hidden = true;
+            groupedRoot.hidden = false;
+            setToggleState("split");
+        } else {
+            isRankSplitMode = false;
+            const orderedCards = [];
+            RANK_ORDER.forEach((rank) => {
+                const bucket = groupedRoot.querySelector(`[data-rank-bucket="${rank}"]`);
+                if (bucket) {
+                    orderedCards.push(...Array.from(bucket.querySelectorAll(".js-anime-card")));
+                }
+            });
+            orderedCards.forEach((card) => rankedGrid.appendChild(card));
+            groupedRoot.hidden = true;
+            rankedGrid.hidden = false;
+            setToggleState("flat");
+        }
+
+        updateDragAvailability();
     }
 
     function updateCardScore(card, anime) {
@@ -431,10 +541,16 @@
                 const card = wrapper.firstElementChild;
                 if (card) {
                     attachCardEvents(card);
-                    fragment.appendChild(card);
+                    if (zone === "ranked" && isRankSplitMode) {
+                        placeCardInRankBucket(card);
+                    } else {
+                        fragment.appendChild(card);
+                    }
                 }
             });
-            grid.appendChild(fragment);
+            if (fragment.childNodes.length > 0) {
+                grid.appendChild(fragment);
+            }
 
             grid.dataset.hasNext = data.has_next ? "1" : "0";
             grid.dataset.nextPage = data.next_page || "";
@@ -476,7 +592,7 @@
             return;
         }
 
-        Sortable.create(rankedGrid, {
+        rankedSortable = Sortable.create(rankedGrid, {
             animation: 160,
             ghostClass: "drag-ghost",
             chosenClass: "drag-chosen",
@@ -492,8 +608,18 @@
         });
     }
 
+    function setupRankViewToggle() {
+        document.querySelectorAll(".js-rank-view-toggle").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                applyRankViewMode(btn.dataset.mode === "split" ? "split" : "flat");
+            });
+        });
+    }
+
     document.querySelectorAll(".js-anime-card").forEach((card) => attachCardEvents(card));
     setupDragSort();
+    setupRankViewToggle();
+    applyRankViewMode("flat");
     setupInfiniteScroll("ranked");
     setupInfiniteScroll("unscored");
 })();

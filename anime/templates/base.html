@@ -206,10 +206,72 @@
             font-size: 0.9rem;
         }
 
+        .view-toggle {
+            display: inline-flex;
+            gap: 6px;
+            margin: 4px 0 10px;
+            padding: 4px;
+            border: 1px solid #ccb396;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #f8f1e8 0%, #efe4d6 100%);
+        }
+
+        .toggle-btn {
+            border: 1px solid transparent;
+            border-radius: 999px;
+            background: transparent;
+            color: #5a4738;
+            padding: 6px 13px;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: filter 0.12s ease, background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        }
+
+        .toggle-btn:hover {
+            filter: brightness(1.03);
+        }
+
+        .toggle-btn.is-active {
+            background: #8f6a3c;
+            border-color: #76542f;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(70, 48, 24, 0.2);
+        }
+
         .anime-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 14px;
+        }
+
+        .rank-columns {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .rank-column {
+            border: 1px solid #d7c6b2;
+            background: #fbf7f1;
+            border-radius: 7px;
+            padding: 10px;
+            min-height: 120px;
+        }
+
+        .rank-column-title {
+            margin: 0 0 8px;
+            font-size: 0.84rem;
+            letter-spacing: 0.04em;
+            color: #4b3e33;
+        }
+
+        .rank-column-grid {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         }
 
         .infinite-status {
