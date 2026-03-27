@@ -616,13 +616,8 @@
 
     async function deleteCard(card) {
         const animeId = card.dataset.animeId;
-        const title = card.querySelector(".js-title-text")?.textContent?.trim() || "この作品";
         const error = card.querySelector(".js-edit-error");
         const btnDelete = card.querySelector(".js-delete");
-
-        if (!window.confirm(`「${title}」を削除しますか？`)) {
-            return;
-        }
 
         btnDelete.disabled = true;
         error.hidden = true;
