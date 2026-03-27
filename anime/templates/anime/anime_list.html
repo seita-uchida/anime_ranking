@@ -42,22 +42,30 @@
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
         {% endif %}
         {% if ranked_anime %}
-            <div class="anime-grid">
+            <div class="anime-grid" id="ranked-grid">
             {% for anime in ranked_anime %}
-                <article class="anime-item">
+                <article class="anime-item js-anime-card" data-anime-id="{{ anime.id }}" data-zone="ranked">
                     {% if anime.image_url %}
                         <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="anime-cover">
                     {% else %}
                         <div class="anime-cover"></div>
                     {% endif %}
                     <div class="anime-meta">
-                        <div class="anime-title">{{ forloop.counter }}. {{ anime.title }}</div>
-                        <div class="anime-score-line">
+                        <div class="anime-title js-title-text">{{ anime.title }}</div>
+                        <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
+                        <div class="anime-score-line js-score-view">
                             {% if anime.rank %}
-                                <span class="rank-badge rank-{{ anime.rank }}">{{ anime.rank }}</span>
+                                <span class="rank-badge js-rank-badge rank-{{ anime.rank }}">{{ anime.rank }}</span>
                             {% endif %}
-                            <span>{{ anime.score }} 点</span>
+                            <span class="js-score-text">{{ anime.score }} 点</span>
                         </div>
+                        <input type="number" class="edit-input js-score-input" min="0" max="100" step="0.1" value="{{ anime.score }}" hidden>
+                        <div class="edit-actions">
+                            <button type="button" class="mini-btn js-edit-toggle">編集</button>
+                            <button type="button" class="mini-btn js-save" hidden>保存</button>
+                            <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
+                        </div>
+                        <p class="edit-error js-edit-error" hidden></p>
                     </div>
                 </article>
             {% endfor %}
@@ -71,19 +79,28 @@
         <h2 style="margin-top: 0;">これから見る・未評価</h2>
         <p class="muted">点数が未入力の作品です。</p>
         {% if unscored_anime %}
-            <div class="anime-grid">
+            <div class="anime-grid" id="unscored-grid">
             {% for anime in unscored_anime %}
-                <article class="anime-item">
+                <article class="anime-item js-anime-card" data-anime-id="{{ anime.id }}" data-zone="unscored">
                     {% if anime.image_url %}
                         <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="anime-cover">
                     {% else %}
                         <div class="anime-cover"></div>
                     {% endif %}
                     <div class="anime-meta">
-                        <div class="anime-title">{{ anime.title }}</div>
-                        <div class="anime-score-line">
-                            <span class="rank-badge unscored">未評価</span>
+                        <div class="anime-title js-title-text">{{ anime.title }}</div>
+                        <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
+                        <div class="anime-score-line js-score-view">
+                            <span class="rank-badge js-rank-badge unscored">未評価</span>
+                            <span class="js-score-text">点数なし</span>
                         </div>
+                        <input type="number" class="edit-input js-score-input" min="0" max="100" step="0.1" value="" hidden>
+                        <div class="edit-actions">
+                            <button type="button" class="mini-btn js-edit-toggle">編集</button>
+                            <button type="button" class="mini-btn js-save" hidden>保存</button>
+                            <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
+                        </div>
+                        <p class="edit-error js-edit-error" hidden></p>
                     </div>
                 </article>
             {% endfor %}
@@ -93,4 +110,141 @@
         {% endif %}
     </section>
 </div>
+
+<script>
+(() => {
+    const RANK_CLASSES = ["rank-S", "rank-A", "rank-B", "rank-C", "rank-F", "unscored"];
+
+    function getCsrfToken() {
+        const cookie = document.cookie
+            .split(";")
+            .map((v) => v.trim())
+            .find((v) => v.startsWith("csrftoken="));
+        return cookie ? decodeURIComponent(cookie.split("=")[1]) : "";
+    }
+
+    function setEditMode(card, editing) {
+        const titleText = card.querySelector(".js-title-text");
+        const titleInput = card.querySelector(".js-title-input");
+        const scoreView = card.querySelector(".js-score-view");
+        const scoreInput = card.querySelector(".js-score-input");
+        const btnEdit = card.querySelector(".js-edit-toggle");
+        const btnSave = card.querySelector(".js-save");
+        const btnCancel = card.querySelector(".js-cancel");
+        const error = card.querySelector(".js-edit-error");
+
+        titleText.hidden = editing;
+        titleInput.hidden = !editing;
+        scoreView.hidden = editing;
+        scoreInput.hidden = !editing;
+        btnEdit.hidden = editing;
+        btnSave.hidden = !editing;
+        btnCancel.hidden = !editing;
+        error.hidden = true;
+        error.textContent = "";
+
+        if (editing) {
+            titleInput.focus();
+        }
+    }
+
+    function setRankBadge(badge, rank) {
+        badge.classList.remove(...RANK_CLASSES);
+        if (!rank) {
+            badge.classList.add("unscored");
+            badge.textContent = "未評価";
+            return;
+        }
+        badge.classList.add(`rank-${rank}`);
+        badge.textContent = rank;
+    }
+
+    function moveCardByZone(card, newScore) {
+        const newZone = newScore === null ? "unscored" : "ranked";
+        if (card.dataset.zone === newZone) {
+            return;
+        }
+
+        const targetGrid = document.getElementById(newZone === "ranked" ? "ranked-grid" : "unscored-grid");
+        if (!targetGrid) {
+            card.dataset.zone = newZone;
+            return;
+        }
+
+        card.dataset.zone = newZone;
+        targetGrid.prepend(card);
+    }
+
+    async function saveCard(card) {
+        const animeId = card.dataset.animeId;
+        const titleInput = card.querySelector(".js-title-input");
+        const scoreInput = card.querySelector(".js-score-input");
+        const error = card.querySelector(".js-edit-error");
+        const btnSave = card.querySelector(".js-save");
+
+        const payload = {
+            title: titleInput.value.trim(),
+            score: scoreInput.value.trim(),
+        };
+
+        btnSave.disabled = true;
+        error.hidden = true;
+
+        try {
+            const response = await fetch(`/api/anime/${animeId}/inline-update/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "更新に失敗しました。");
+            }
+
+            const { anime } = data;
+            card.querySelector(".js-title-text").textContent = anime.title;
+            titleInput.value = anime.title;
+
+            const scoreText = card.querySelector(".js-score-text");
+            const scoreInputValue = anime.score ?? "";
+            scoreInput.value = scoreInputValue;
+            scoreText.textContent = anime.score ? `${anime.score} 点` : "点数なし";
+
+            const badge = card.querySelector(".js-rank-badge");
+            setRankBadge(badge, anime.rank);
+            moveCardByZone(card, anime.score);
+            setEditMode(card, false);
+        } catch (err) {
+            error.textContent = err.message;
+            error.hidden = false;
+        } finally {
+            btnSave.disabled = false;
+        }
+    }
+
+    document.querySelectorAll(".js-anime-card").forEach((card) => {
+        const titleInput = card.querySelector(".js-title-input");
+        const scoreInput = card.querySelector(".js-score-input");
+
+        card.querySelector(".js-edit-toggle").addEventListener("click", () => {
+            titleInput.dataset.original = titleInput.value;
+            scoreInput.dataset.original = scoreInput.value;
+            setEditMode(card, true);
+        });
+
+        card.querySelector(".js-cancel").addEventListener("click", () => {
+            titleInput.value = titleInput.dataset.original ?? titleInput.value;
+            scoreInput.value = scoreInput.dataset.original ?? scoreInput.value;
+            setEditMode(card, false);
+        });
+
+        card.querySelector(".js-save").addEventListener("click", () => {
+            saveCard(card);
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -215,6 +215,56 @@
             font-size: 0.92rem;
         }
 
+        .edit-input {
+            width: 100%;
+            border: 1px solid #bfa88d;
+            border-radius: 6px;
+            padding: 7px 9px;
+            font-family: inherit;
+            font-size: 0.92rem;
+            background: #fff;
+            color: var(--text);
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: #87643b;
+            box-shadow: 0 0 0 2px rgba(143, 106, 60, 0.14);
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 2px;
+        }
+
+        .mini-btn {
+            border: 1px solid #8d6a44;
+            border-radius: 6px;
+            background: #8f6a3c;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+
+        .mini-btn.ghost {
+            background: #f3ece3;
+            color: #4f4338;
+            border-color: #cbb59b;
+        }
+
+        .mini-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .edit-error {
+            margin: 2px 0 0;
+            color: #9a2340;
+            font-size: 0.78rem;
+        }
+
         .rank-badge {
             min-width: 2.2rem;
             text-align: center;
