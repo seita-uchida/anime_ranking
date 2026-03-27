@@ -137,8 +137,16 @@
 
         .external-search-form {
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: minmax(0, 1fr) 110px 130px auto;
             gap: 8px;
+        }
+
+        .external-search-form .filter-input {
+            min-width: 0;
+        }
+
+        #external-search-submit {
+            white-space: nowrap;
         }
 
         .external-search-results {
@@ -640,6 +648,20 @@
 
             .external-search-results {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (min-width: 701px) and (max-width: 980px) {
+            .external-search-form {
+                grid-template-columns: minmax(0, 1fr) 110px;
+            }
+
+            #external-search-season {
+                grid-column: 1 / 2;
+            }
+
+            #external-search-submit {
+                grid-column: 2 / 3;
             }
         }
     </style>

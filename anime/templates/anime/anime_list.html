@@ -50,16 +50,33 @@
                         id="external-search-query"
                         class="filter-input"
                         type="text"
-                        placeholder="作品名で外部検索（例: 鬼滅の刃）"
-                        minlength="2"
-                        required
+                        placeholder="作品名で外部検索（任意）"
                     >
+                    <input
+                        id="external-search-year"
+                        class="filter-input"
+                        type="number"
+                        min="1900"
+                        max="2100"
+                        placeholder="年度"
+                        value="{{ current_year }}"
+                        aria-label="外部検索年度"
+                    >
+                    <select id="external-search-season" class="filter-input" aria-label="外部検索シーズン">
+                        <option value="">全シーズン</option>
+                        {% for value, label in season_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
                     <button type="submit" class="btn" id="external-search-submit">外部検索</button>
                 </form>
                 <p class="muted">検索結果から追加すると、未評価として保存されます。</p>
                 <p class="edit-error" id="external-search-error" hidden></p>
                 <div class="infinite-status" id="external-search-status" hidden>検索中...</div>
                 <div class="external-search-results" id="external-search-results"></div>
+                <div>
+                    <button type="button" class="btn btn-secondary" id="external-search-more" hidden>もっと見る</button>
+                </div>
             </div>
         </div>
     </section>
@@ -201,6 +218,12 @@
     const INLINE_DEFAULT_SCORE = "{{ default_score|escapejs }}";
     const externalSearchState = {
         items: [],
+        query: "",
+        season: "",
+        year: "",
+        nextPage: null,
+        hasNext: false,
+        loading: false,
     };
     let isRankSplitMode = false;
     let rankedSortable = null;
@@ -861,40 +884,103 @@
         }
     }
 
-    function renderExternalResults(items) {
+    function renderExternalResults(items, append = false) {
         const container = document.getElementById("external-search-results");
+        const moreBtn = document.getElementById("external-search-more");
         if (!container) {
             return;
         }
 
         if (!items.length) {
-            container.innerHTML = '<p class="muted">一致する作品が見つかりませんでした。</p>';
+            if (!append) {
+                container.innerHTML = '<p class="muted">一致する作品が見つかりませんでした。</p>';
+            }
+            if (moreBtn) {
+                moreBtn.hidden = true;
+            }
             return;
         }
 
-        container.innerHTML = items.map((item, index) => createExternalResultHtml(item, index)).join("");
+        const html = items.map((item, index) => createExternalResultHtml(item, index)).join("");
+        if (append) {
+            container.insertAdjacentHTML("beforeend", html);
+        } else {
+            container.innerHTML = html;
+        }
+
+        if (moreBtn) {
+            moreBtn.hidden = !externalSearchState.hasNext;
+        }
     }
 
-    async function searchExternalAnime(query) {
+    async function searchExternalAnime(options = {}) {
+        const {
+            append = false,
+            query,
+            season,
+            year,
+            page,
+        } = options;
         const error = document.getElementById("external-search-error");
         const status = document.getElementById("external-search-status");
         const submit = document.getElementById("external-search-submit");
+        const moreBtn = document.getElementById("external-search-more");
+
+        if (externalSearchState.loading) {
+            return;
+        }
+        externalSearchState.loading = true;
 
         submit.disabled = true;
+        if (moreBtn) {
+            moreBtn.disabled = true;
+        }
         error.hidden = true;
         error.textContent = "";
         status.hidden = false;
-        status.textContent = "検索中...";
+        status.textContent = append ? "さらに読み込み中..." : "検索中...";
 
         try {
-            const response = await fetch(`/api/anime/external-search/?q=${encodeURIComponent(query)}`);
+            const params = new URLSearchParams({ q: query, page: String(page || 1) });
+            if (season) {
+                params.set("season", season);
+            }
+            if (year) {
+                params.set("year", year);
+            }
+            const response = await fetch(`/api/anime/external-search/?${params.toString()}`);
             const data = await response.json();
             if (!response.ok || !data.ok) {
                 throw new Error(data.error || "外部検索に失敗しました。");
             }
 
-            externalSearchState.items = Array.isArray(data.items) ? data.items : [];
-            renderExternalResults(externalSearchState.items);
+            const newItems = Array.isArray(data.items) ? data.items : [];
+            if (append) {
+                const startIndex = externalSearchState.items.length;
+                externalSearchState.items = externalSearchState.items.concat(newItems);
+                renderExternalResults(
+                    newItems.map((item, i) => ({ ...item, __index: startIndex + i })),
+                    true
+                );
+            } else {
+                externalSearchState.items = newItems;
+                renderExternalResults(newItems, false);
+            }
+
+            externalSearchState.hasNext = !!data.has_next;
+            externalSearchState.nextPage = data.next_page || null;
+
+            const container = document.getElementById("external-search-results");
+            if (container) {
+                const cards = container.querySelectorAll(".js-external-add");
+                cards.forEach((btn, idx) => {
+                    btn.dataset.index = String(idx);
+                });
+            }
+
+            if (moreBtn) {
+                moreBtn.hidden = !externalSearchState.hasNext;
+            }
             status.hidden = true;
         } catch (err) {
             status.hidden = true;
@@ -902,6 +988,10 @@
             error.hidden = false;
         } finally {
             submit.disabled = false;
+            if (moreBtn) {
+                moreBtn.disabled = false;
+            }
+            externalSearchState.loading = false;
         }
     }
 
@@ -993,17 +1083,47 @@
         const form = document.getElementById("external-search-form");
         const queryInput = document.getElementById("external-search-query");
         const results = document.getElementById("external-search-results");
-        if (!form || !queryInput || !results) {
+        const yearInput = document.getElementById("external-search-year");
+        const seasonInput = document.getElementById("external-search-season");
+        const moreBtn = document.getElementById("external-search-more");
+        if (!form || !queryInput || !results || !seasonInput || !yearInput || !moreBtn) {
             return;
         }
 
         form.addEventListener("submit", (event) => {
             event.preventDefault();
             const query = queryInput.value.trim();
-            if (query.length < 2) {
+            const year = yearInput.value.trim();
+            const season = seasonInput.value;
+
+            if (!query && !year && !season) {
                 return;
             }
-            searchExternalAnime(query);
+
+            externalSearchState.query = query;
+            externalSearchState.year = year;
+            externalSearchState.season = season;
+            externalSearchState.nextPage = 1;
+            searchExternalAnime({
+                append: false,
+                query,
+                year,
+                season,
+                page: 1,
+            });
+        });
+
+        moreBtn.addEventListener("click", () => {
+            if (!externalSearchState.hasNext || !externalSearchState.nextPage) {
+                return;
+            }
+            searchExternalAnime({
+                append: true,
+                query: externalSearchState.query,
+                year: externalSearchState.year,
+                season: externalSearchState.season,
+                page: externalSearchState.nextPage,
+            });
         });
 
         results.addEventListener("click", (event) => {

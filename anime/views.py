@@ -31,6 +31,12 @@ SEASON_EN_TO_JA = {
 	"autumn": "秋",
 	"winter": "冬",
 }
+SEASON_JA_TO_EN = {
+	"春": "spring",
+	"夏": "summer",
+	"秋": "fall",
+	"冬": "winter",
+}
 
 
 def _get_filtered_queryset(request):
@@ -193,20 +199,51 @@ def anime_list_chunk(request):
 @require_GET
 def anime_external_search(request):
 	query = str(request.GET.get("q", "")).strip()
-	if len(query) < 2:
+	selected_season = str(request.GET.get("season", "")).strip()
+	selected_year_raw = str(request.GET.get("year", "")).strip()
+	page_raw = str(request.GET.get("page", "1")).strip()
+	if query and len(query) < 2:
 		return JsonResponse({"ok": False, "error": "検索キーワードは2文字以上で入力してください。"}, status=400)
 
+	valid_seasons = {choice[0] for choice in Anime.SEASON_CHOICES}
+	if selected_season and selected_season not in valid_seasons:
+		return JsonResponse({"ok": False, "error": "シーズン指定が不正です。"}, status=400)
+
 	current_year, current_season = _current_year_and_season()
-	params = urlparse.urlencode(
-		{
-			"q": query,
-			"limit": 12,
-			"sfw": "true",
-			"order_by": "popularity",
-			"sort": "asc",
-		}
-	)
-	url = f"https://api.jikan.moe/v4/anime?{params}"
+	selected_year = current_year
+	if selected_year_raw:
+		try:
+			selected_year = int(selected_year_raw)
+		except ValueError:
+			return JsonResponse({"ok": False, "error": "年度指定が不正です。"}, status=400)
+
+	try:
+		page = int(page_raw)
+	except ValueError:
+		return JsonResponse({"ok": False, "error": "page が不正です。"}, status=400)
+	if page < 1:
+		return JsonResponse({"ok": False, "error": "page は1以上です。"}, status=400)
+
+	if query:
+		params = urlparse.urlencode(
+			{
+				"q": query,
+				"limit": 8,
+				"page": page,
+				"sfw": "true",
+				"order_by": "popularity",
+				"sort": "asc",
+			}
+		)
+		url = f"https://api.jikan.moe/v4/anime?{params}"
+	else:
+		if selected_season:
+			season_en = SEASON_JA_TO_EN[selected_season]
+			params = urlparse.urlencode({"limit": 8, "page": page, "sfw": "true"})
+			url = f"https://api.jikan.moe/v4/seasons/{selected_year}/{season_en}?{params}"
+		else:
+			params = urlparse.urlencode({"limit": 8, "page": page, "sfw": "true"})
+			url = f"https://api.jikan.moe/v4/seasons/{selected_year}?{params}"
 	request_obj = urlrequest.Request(url, headers={"User-Agent": "anime-ranking/1.0"})
 
 	try:
@@ -233,6 +270,10 @@ def anime_external_search(request):
 			image_url = str(jpg_image.get("image_url"))
 
 		year, season = _extract_year_season_from_jikan(item, current_year, current_season)
+		if selected_year is not None and year != selected_year:
+			continue
+		if selected_season and season != selected_season:
+			continue
 		items.append(
 			{
 				"external_id": item.get("mal_id"),
@@ -243,7 +284,17 @@ def anime_external_search(request):
 			}
 		)
 
-	return JsonResponse({"ok": True, "items": items})
+	pagination = payload.get("pagination") or {}
+	has_next = bool(pagination.get("has_next_page"))
+
+	return JsonResponse(
+		{
+			"ok": True,
+			"items": items,
+			"has_next": has_next,
+			"next_page": page + 1 if has_next else None,
+		}
+	)
 
 
 @login_required
