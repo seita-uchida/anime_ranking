@@ -135,6 +135,7 @@
     const FILTER_SEASON = "{{ selected_season|escapejs }}";
     let isRankSplitMode = false;
     let rankedSortable = null;
+    let rankBucketSortables = [];
 
     function escapeHtml(value) {
         return String(value)
@@ -307,6 +308,9 @@
             return;
         }
         rankedSortable.option("disabled", isRankSplitMode);
+        rankBucketSortables.forEach((sortable) => {
+            sortable.option("disabled", !isRankSplitMode);
+        });
     }
 
     function applyRankViewMode(mode) {
@@ -371,14 +375,16 @@
         container.insertBefore(item, children[oldIndex]);
     }
 
-    async function syncReorder(item, oldIndex) {
+    async function syncReorder(item, oldIndex, fromContainer) {
         const animeId = item.dataset.animeId;
         const prevCard = findSiblingCard(item, "prev");
         const nextCard = findSiblingCard(item, "next");
+        const targetBucket = item.closest("[data-rank-bucket]");
 
         const payload = {
             prev_id: prevCard ? Number(prevCard.dataset.animeId) : null,
             next_id: nextCard ? Number(nextCard.dataset.animeId) : null,
+            target_rank: targetBucket ? targetBucket.dataset.rankBucket : null,
         };
 
         try {
@@ -396,8 +402,11 @@
             }
 
             updateCardScore(item, data.anime);
+            moveCardByZone(item, data.anime.score);
         } catch (err) {
-            restoreCardPosition(item.parentElement, item, oldIndex);
+            if (fromContainer) {
+                restoreCardPosition(fromContainer, item, oldIndex);
+            }
             window.alert(err.message);
         }
     }
@@ -603,8 +612,38 @@
                 if (evt.oldIndex === evt.newIndex) {
                     return;
                 }
-                syncReorder(evt.item, evt.oldIndex);
+                syncReorder(evt.item, evt.oldIndex, evt.from);
             },
+        });
+    }
+
+    function setupRankBucketSorts() {
+        if (!window.Sortable || rankBucketSortables.length > 0) {
+            return;
+        }
+
+        const groupedRoot = ensureRankBuckets();
+        if (!groupedRoot) {
+            return;
+        }
+
+        groupedRoot.querySelectorAll("[data-rank-bucket]").forEach((bucket) => {
+            const sortable = Sortable.create(bucket, {
+                group: "rank-buckets",
+                animation: 160,
+                ghostClass: "drag-ghost",
+                chosenClass: "drag-chosen",
+                draggable: ".js-anime-card[data-zone='ranked']",
+                filter: ".edit-input, .mini-btn",
+                preventOnFilter: false,
+                onEnd: (evt) => {
+                    if (evt.oldIndex === evt.newIndex && evt.from === evt.to) {
+                        return;
+                    }
+                    syncReorder(evt.item, evt.oldIndex, evt.from);
+                },
+            });
+            rankBucketSortables.push(sortable);
         });
     }
 
@@ -618,6 +657,7 @@
 
     document.querySelectorAll(".js-anime-card").forEach((card) => attachCardEvents(card));
     setupDragSort();
+    setupRankBucketSorts();
     setupRankViewToggle();
     applyRankViewMode("flat");
     setupInfiniteScroll("ranked");

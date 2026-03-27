@@ -12,6 +12,13 @@ from .models import Anime
 
 LIST_PAGE_SIZE = 24
 SCORE_STEP = Decimal("0.1")
+RANK_BOUNDS = {
+	"S": (Decimal("90.0"), Decimal("100.0")),
+	"A": (Decimal("80.0"), Decimal("89.9")),
+	"B": (Decimal("70.0"), Decimal("79.9")),
+	"C": (Decimal("60.0"), Decimal("69.9")),
+	"F": (Decimal("0.0"), Decimal("59.9")),
+}
 
 
 def _get_filtered_queryset(request):
@@ -184,6 +191,11 @@ def anime_reorder(request, anime_id):
 
 	prev_id = payload.get("prev_id")
 	next_id = payload.get("next_id")
+	target_rank = payload.get("target_rank")
+	if target_rank is not None:
+		target_rank = str(target_rank).strip().upper()
+		if target_rank not in RANK_BOUNDS:
+			return JsonResponse({"ok": False, "error": "target_rank が不正です。"}, status=400)
 
 	prev_anime = None
 	next_anime = None
@@ -210,7 +222,18 @@ def anime_reorder(request, anime_id):
 	elif next_anime:
 		new_score = next_anime.score + SCORE_STEP
 	else:
-		return JsonResponse({"ok": False, "error": "並び替え先を特定できません。"}, status=400)
+		if target_rank:
+			lower, upper = RANK_BOUNDS[target_rank]
+			new_score = (lower + upper) / Decimal("2")
+		else:
+			return JsonResponse({"ok": False, "error": "並び替え先を特定できません。"}, status=400)
+
+	if target_rank:
+		lower, upper = RANK_BOUNDS[target_rank]
+		if new_score < lower:
+			new_score = lower
+		if new_score > upper:
+			new_score = upper
 
 	if new_score < Decimal("0.0"):
 		new_score = Decimal("0.0")
