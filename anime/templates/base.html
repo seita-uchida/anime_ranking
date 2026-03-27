@@ -82,6 +82,86 @@
             color: var(--muted);
         }
 
+        .filter-card {
+            padding: 14px 16px;
+            border-top: 2px solid #b49773;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 12px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .filter-field {
+            min-width: 170px;
+        }
+
+        .filter-label {
+            display: block;
+            font-size: 0.75rem;
+            color: #6f6154;
+            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .filter-select-wrap {
+            position: relative;
+        }
+
+        .filter-select-wrap::after {
+            content: "";
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #7a6249;
+            border-bottom: 2px solid #7a6249;
+            transform: translateY(-70%) rotate(45deg);
+            pointer-events: none;
+        }
+
+        .filter-input {
+            width: 100%;
+            min-width: 130px;
+            padding: 10px 34px 10px 12px;
+            border: 1px solid #bfa88d;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #fffdf9 0%, #f8f2e9 100%);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.95rem;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            transition: border-color 0.14s ease, box-shadow 0.14s ease;
+        }
+
+        .filter-input:hover {
+            border-color: #9f825f;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #87643b;
+            box-shadow: 0 0 0 2px rgba(143, 106, 60, 0.16);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .active-filter {
+            color: var(--accent-deep);
+            margin: 4px 0 12px;
+            font-size: 0.9rem;
+        }
+
         .anime-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -159,6 +239,20 @@
         @media (max-width: 700px) {
             .container {
                 width: min(1440px, 97vw);
+            }
+
+            .filter-form {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                align-items: stretch;
+            }
+
+            .filter-field {
+                min-width: 0;
+            }
+
+            .filter-actions {
+                grid-column: 1 / -1;
             }
 
             .anime-grid {

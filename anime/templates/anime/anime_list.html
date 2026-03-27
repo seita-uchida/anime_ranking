@@ -4,9 +4,43 @@
 
 {% block content %}
 <div class="stack">
+    <section class="card filter-card">
+        <form method="get" class="filter-form">
+            <div class="filter-field">
+                <label for="year" class="filter-label">年度</label>
+                <div class="filter-select-wrap">
+                    <select id="year" name="year" class="filter-input">
+                        <option value="">すべて</option>
+                        {% for year in available_years %}
+                            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="filter-field">
+                <label for="season" class="filter-label">シーズン</label>
+                <div class="filter-select-wrap">
+                    <select id="season" name="season" class="filter-input">
+                        <option value="">すべて</option>
+                        {% for value, label in season_choices %}
+                            <option value="{{ value }}" {% if selected_season == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn">絞り込む</button>
+                <a href="{% url 'anime_list' %}" class="btn btn-secondary">リセット</a>
+            </div>
+        </form>
+    </section>
+
     <section class="card">
         <h2 style="margin-top: 0;">ランキング一覧</h2>
         <p class="muted">画像の下にタイトル・ランク・点数を表示します。</p>
+        {% if selected_year or selected_season %}
+            <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
+        {% endif %}
         {% if ranked_anime %}
             <div class="anime-grid">
             {% for anime in ranked_anime %}
