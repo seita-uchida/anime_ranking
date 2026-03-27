@@ -308,6 +308,7 @@ def anime_external_add(request):
 	title = str(payload.get("title", "")).strip()
 	image_url = str(payload.get("image_url", "")).strip()
 	season = str(payload.get("season", "")).strip()
+	score_raw = payload.get("score")
 
 	if not title:
 		return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
@@ -323,6 +324,19 @@ def anime_external_add(request):
 	if season not in valid_seasons:
 		return JsonResponse({"ok": False, "error": "シーズンが不正です。"}, status=400)
 
+	parsed_score = None
+	if score_raw not in (None, ""):
+		try:
+			parsed_score = Decimal(str(score_raw))
+		except (InvalidOperation, ValueError):
+			return JsonResponse({"ok": False, "error": "点数は数値で入力してください。"}, status=400)
+
+		if parsed_score < Decimal("0.0") or parsed_score > Decimal("100.0"):
+			return JsonResponse({"ok": False, "error": "点数は0.0〜100.0で入力してください。"}, status=400)
+		if parsed_score.as_tuple().exponent < -1:
+			return JsonResponse({"ok": False, "error": "点数は0.1刻みで入力してください。"}, status=400)
+		parsed_score = parsed_score.quantize(Decimal("0.1"))
+
 	if Anime.objects.filter(title=title, year=year, season=season).exists():
 		return JsonResponse({"ok": False, "error": "同じタイトル・年度・シーズンの作品が既に存在します。"}, status=409)
 
@@ -331,7 +345,7 @@ def anime_external_add(request):
 		image_url=image_url,
 		year=year,
 		season=season,
-		score=None,
+		score=parsed_score,
 	)
 
 	return JsonResponse({"ok": True, "anime": _serialize_anime(anime)})

@@ -70,12 +70,27 @@
                     </select>
                     <button type="submit" class="btn" id="external-search-submit">外部検索</button>
                 </form>
-                <p class="muted">検索結果から追加すると、未評価として保存されます。</p>
+                <div class="external-score-row">
+                    <label for="external-search-score" class="filter-label">追加時の点数（空欄で評価待ち）</label>
+                    <div class="external-score-controls">
+                        <input
+                            id="external-search-score"
+                            class="filter-input external-score-input"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            placeholder="未入力で評価待ち"
+                        >
+                    </div>
+                </div>
+                <p class="muted">検索結果から追加時、点数空欄なら評価待ち（未評価）になります。</p>
                 <p class="edit-error" id="external-search-error" hidden></p>
                 <div class="infinite-status" id="external-search-status" hidden>検索中...</div>
                 <div class="external-search-results" id="external-search-results"></div>
-                <div>
+                <div class="external-search-actions">
                     <button type="button" class="btn btn-secondary" id="external-search-more" hidden>もっと見る</button>
+                    <button type="button" class="btn btn-secondary" id="external-search-hide">閉じる</button>
                 </div>
             </div>
         </div>
@@ -992,6 +1007,7 @@
 
     async function addExternalAnime(index, button) {
         const error = document.getElementById("external-search-error");
+        const scoreInput = document.getElementById("external-search-score");
         const item = externalSearchState.items[index];
         if (!item) {
             return;
@@ -1013,6 +1029,7 @@
                     image_url: item.image_url || "",
                     year: item.year,
                     season: item.season,
+                    score: scoreInput ? scoreInput.value.trim() : "",
                 }),
             });
             const data = await response.json();
@@ -1029,11 +1046,22 @@
             }
 
             attachCardEvents(card);
-            const unscoredGrid = document.getElementById("unscored-grid");
-            if (unscoredGrid) {
-                unscoredGrid.prepend(card);
+            const zone = anime.score ? "ranked" : "unscored";
+            if (zone === "ranked") {
+                const rankedGrid = document.getElementById("ranked-grid");
+                if (isRankSplitMode) {
+                    placeCardInRankBucket(card);
+                } else if (rankedGrid) {
+                    rankedGrid.prepend(card);
+                }
+            } else {
+                const unscoredGrid = document.getElementById("unscored-grid");
+                if (unscoredGrid) {
+                    unscoredGrid.prepend(card);
+                }
             }
             updateEmptyMessages();
+            refreshRankIndices();
 
             button.textContent = "追加済み";
         } catch (err) {
@@ -1078,12 +1106,31 @@
         const form = document.getElementById("external-search-form");
         const queryInput = document.getElementById("external-search-query");
         const results = document.getElementById("external-search-results");
+        const error = document.getElementById("external-search-error");
+        const status = document.getElementById("external-search-status");
         const yearInput = document.getElementById("external-search-year");
         const seasonInput = document.getElementById("external-search-season");
         const moreBtn = document.getElementById("external-search-more");
-        if (!form || !queryInput || !results || !seasonInput || !yearInput || !moreBtn) {
+        const hideBtn = document.getElementById("external-search-hide");
+        if (!form || !queryInput || !results || !error || !status || !seasonInput || !yearInput || !moreBtn || !hideBtn) {
             return;
         }
+
+        const resetExternalSearch = () => {
+            externalSearchState.items = [];
+            externalSearchState.query = "";
+            externalSearchState.season = "";
+            externalSearchState.year = "";
+            externalSearchState.nextPage = null;
+            externalSearchState.hasNext = false;
+
+            results.innerHTML = "";
+            error.hidden = true;
+            error.textContent = "";
+            status.hidden = true;
+            status.textContent = "検索中...";
+            moreBtn.hidden = true;
+        };
 
         form.addEventListener("submit", (event) => {
             event.preventDefault();
@@ -1119,6 +1166,10 @@
                 season: externalSearchState.season,
                 page: externalSearchState.nextPage,
             });
+        });
+
+        hideBtn.addEventListener("click", () => {
+            resetExternalSearch();
         });
 
         results.addEventListener("click", (event) => {
