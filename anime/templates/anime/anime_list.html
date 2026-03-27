@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}ランキング一覧{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <section class="card">
+        <h2 style="margin-top: 0;">ランキング一覧</h2>
+        <p class="muted">画像の下にタイトル・ランク・点数を表示します。</p>
+        {% if ranked_anime %}
+            <div class="anime-grid">
+            {% for anime in ranked_anime %}
+                <article class="anime-item">
+                    {% if anime.image_url %}
+                        <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="anime-cover">
+                    {% else %}
+                        <div class="anime-cover"></div>
+                    {% endif %}
+                    <div class="anime-meta">
+                        <div class="anime-title">{{ forloop.counter }}. {{ anime.title }}</div>
+                        <div class="anime-score-line">
+                            {% if anime.rank %}
+                                <span class="rank-badge rank-{{ anime.rank }}">{{ anime.rank }}</span>
+                            {% endif %}
+                            <span>{{ anime.score }} 点</span>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">まだ評価済み作品がありません。</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2 style="margin-top: 0;">これから見る・未評価</h2>
+        <p class="muted">点数が未入力の作品です。</p>
+        {% if unscored_anime %}
+            <div class="anime-grid">
+            {% for anime in unscored_anime %}
+                <article class="anime-item">
+                    {% if anime.image_url %}
+                        <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="anime-cover">
+                    {% else %}
+                        <div class="anime-cover"></div>
+                    {% endif %}
+                    <div class="anime-meta">
+                        <div class="anime-title">{{ anime.title }}</div>
+                        <div class="anime-score-line">
+                            <span class="rank-badge unscored">未評価</span>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted">未評価作品はありません。</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

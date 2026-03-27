@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}ログイン{% endblock %}
+
+{% block content %}
+<section class="card" style="max-width: 420px; margin: 40px auto;">
+    <h2 style="margin-top: 0;">ログイン</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">ログイン</button>
+    </form>
+</section>
+{% endblock %}

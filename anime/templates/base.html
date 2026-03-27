@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Anime Ranking{% endblock %}</title>
+    <style>
+        :root {
+            --bg: #f3f0ea;
+            --card: #faf7f1;
+            --surface: #fdfbf8;
+            --text: #1f1b18;
+            --muted: #6a6057;
+            --line: #d7c9b7;
+            --accent: #8f6a3c;
+            --accent-deep: #5f4426;
+            --danger: #b4233b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #f5f2ec 0%, var(--bg) 100%);
+            color: var(--text);
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: min(1440px, 96vw);
+            margin: 0 auto;
+            padding: 24px 0 48px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(30, 25, 20, 0.06);
+            padding: 16px;
+        }
+
+        .topbar h1 {
+            color: var(--accent-deep);
+            letter-spacing: 0.04em;
+            font-weight: 700;
+        }
+
+        .btn {
+            border: 1px solid #76542f;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 600;
+            background: linear-gradient(180deg, #9e7746 0%, var(--accent) 100%);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary {
+            background: #4f473f;
+            border-color: #3f3831;
+        }
+
+        .stack {
+            display: grid;
+            gap: 16px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 14px;
+        }
+
+        .anime-item {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 10px;
+            transition: border-color 0.14s ease, box-shadow 0.14s ease;
+        }
+
+        .anime-item:hover {
+            border-color: #b59b7c;
+            box-shadow: 0 4px 10px rgba(45, 35, 25, 0.1);
+        }
+
+        .anime-cover {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #eee5da;
+            border: 1px solid var(--line);
+            display: block;
+        }
+
+        .anime-meta {
+            margin-top: 8px;
+            display: grid;
+            gap: 5px;
+        }
+
+        .anime-title {
+            font-weight: 700;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 2.7em;
+        }
+
+        .anime-score-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .rank-badge {
+            min-width: 2.2rem;
+            text-align: center;
+            display: inline-block;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            padding: 2px 8px;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .rank-S { background: #7d163f; }
+        .rank-A { background: #8f6a1f; }
+        .rank-B { background: #1f5f73; }
+        .rank-C { background: #4f6a40; }
+        .rank-F { background: #4d433a; }
+
+        .unscored {
+            background: #7b695d;
+        }
+
+        @media (max-width: 700px) {
+            .container {
+                width: min(1440px, 97vw);
+            }
+
+            .anime-grid {
+                grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1 style="margin:0;">Anime Ranking</h1>
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary">ログアウト</button>
+            </form>
+        {% endif %}
+    </div>
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>
