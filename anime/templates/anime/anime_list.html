@@ -95,6 +95,7 @@
         <div class="anime-grid" id="ranked-grid" data-next-page="{{ ranked_next_page|default:'' }}" data-has-next="{{ ranked_has_next|yesno:'1,0' }}">
             {% for anime in ranked_anime %}
                 <article class="anime-item js-anime-card" data-anime-id="{{ anime.id }}" data-zone="ranked">
+                    <div class="rank-index js-rank-index">#{{ forloop.counter }}</div>
                     {% if anime.image_url %}
                         <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="anime-cover">
                     {% else %}
@@ -245,9 +246,11 @@
             : '<span class="rank-badge js-rank-badge unscored">未評価</span>';
         const scoreText = anime.score ? `${escapeHtml(anime.score)} 点` : "点数なし";
         const scoreInput = anime.score ? escapeHtml(anime.score) : "";
+        const rankIndex = zone === "ranked" ? '<div class="rank-index js-rank-index"></div>' : "";
 
         return `
             <article class="anime-item js-anime-card" data-anime-id="${anime.id}" data-zone="${zone}">
+                ${rankIndex}
                 ${image}
                 <div class="anime-meta">
                     <div class="anime-title js-title-text">${title}</div>
@@ -306,6 +309,24 @@
         if (unscoredGrid && unscoredEmpty) {
             unscoredEmpty.hidden = unscoredGrid.querySelectorAll(".js-anime-card").length > 0;
         }
+    }
+
+    function refreshRankIndices() {
+        const rankedGrid = document.getElementById("ranked-grid");
+        if (!rankedGrid) {
+            return;
+        }
+
+        const showRank = !isRankSplitMode;
+        const rankedCards = rankedGrid.querySelectorAll(".js-anime-card[data-zone='ranked']");
+        rankedCards.forEach((card, index) => {
+            const rankIndex = card.querySelector(".js-rank-index");
+            if (!rankIndex) {
+                return;
+            }
+            rankIndex.textContent = `#${index + 1}`;
+            rankIndex.hidden = !showRank;
+        });
     }
 
     function getCardRank(card) {
@@ -404,6 +425,7 @@
         }
 
         updateDragAvailability();
+        refreshRankIndices();
     }
 
     function updateCardScore(card, anime) {
@@ -464,6 +486,7 @@
 
             updateCardScore(item, data.anime);
             moveCardByZone(item, data.anime.score);
+            refreshRankIndices();
         } catch (err) {
             if (fromContainer) {
                 restoreCardPosition(fromContainer, item, oldIndex);
@@ -549,6 +572,7 @@
 
             card.remove();
             updateEmptyMessages();
+            refreshRankIndices();
         } catch (err) {
             error.textContent = err.message;
             error.hidden = false;
@@ -623,6 +647,7 @@
                 grid.appendChild(fragment);
             }
             updateEmptyMessages();
+            refreshRankIndices();
 
             grid.dataset.hasNext = data.has_next ? "1" : "0";
             grid.dataset.nextPage = data.next_page || "";
@@ -781,6 +806,7 @@
             if (seasonInput) seasonInput.value = INLINE_DEFAULT_SEASON;
             if (scoreInput) scoreInput.value = INLINE_DEFAULT_SCORE;
             updateEmptyMessages();
+            refreshRankIndices();
         } catch (err) {
             error.textContent = err.message;
             error.hidden = false;
@@ -827,6 +853,7 @@
     setupInlineAddForm();
     applyRankViewMode("flat");
     updateEmptyMessages();
+    refreshRankIndices();
     setupInfiniteScroll("ranked");
     setupInfiniteScroll("unscored");
 })();

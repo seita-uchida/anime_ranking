@@ -366,6 +366,7 @@
             border: 1px solid var(--line);
             border-radius: 6px;
             padding: 10px;
+            position: relative;
             transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
         }
 
@@ -404,6 +405,29 @@
             margin-top: 8px;
             display: grid;
             gap: 5px;
+        }
+
+        .rank-index {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 52px;
+            height: 26px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #ffffff;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.88);
+            border-radius: 0;
+            letter-spacing: 0.05em;
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.7),
+                0 3px 8px rgba(0, 0, 0, 0.45);
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.75);
         }
 
         .anime-title {
