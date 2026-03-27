@@ -43,6 +43,24 @@
                 </div>
             </form>
             <p class="edit-error" id="inline-add-error" hidden></p>
+
+            <div class="external-search-wrap">
+                <form class="external-search-form" id="external-search-form">
+                    <input
+                        id="external-search-query"
+                        class="filter-input"
+                        type="text"
+                        placeholder="作品名で外部検索（例: 鬼滅の刃）"
+                        minlength="2"
+                        required
+                    >
+                    <button type="submit" class="btn" id="external-search-submit">外部検索</button>
+                </form>
+                <p class="muted">検索結果から追加すると、未評価として保存されます。</p>
+                <p class="edit-error" id="external-search-error" hidden></p>
+                <div class="infinite-status" id="external-search-status" hidden>検索中...</div>
+                <div class="external-search-results" id="external-search-results"></div>
+            </div>
         </div>
     </section>
 
@@ -181,6 +199,9 @@
     const INLINE_DEFAULT_YEAR = "{{ current_year|escapejs }}";
     const INLINE_DEFAULT_SEASON = "{{ current_season|escapejs }}";
     const INLINE_DEFAULT_SCORE = "{{ default_score|escapejs }}";
+    const externalSearchState = {
+        items: [],
+    };
     let isRankSplitMode = false;
     let rankedSortable = null;
     let rankBucketSortables = [];
@@ -272,6 +293,26 @@
                         <button type="button" class="mini-btn danger js-delete">削除</button>
                     </div>
                     <p class="edit-error js-edit-error" hidden></p>
+                </div>
+            </article>
+        `;
+    }
+
+    function createExternalResultHtml(item, index) {
+        const title = escapeHtml(item.title || "-");
+        const year = escapeHtml(item.year ?? "-");
+        const season = escapeHtml(item.season || "-");
+        const image = item.image_url
+            ? `<img src="${escapeHtml(item.image_url)}" alt="${title}" class="external-item-cover">`
+            : '<div class="external-item-cover"></div>';
+
+        return `
+            <article class="external-item">
+                ${image}
+                <div>
+                    <p class="external-item-title">${title}</p>
+                    <p class="external-item-meta">${year} / ${season}</p>
+                    <button type="button" class="mini-btn external-add-btn js-external-add" data-index="${index}">追加</button>
                 </div>
             </article>
         `;
@@ -820,6 +861,103 @@
         }
     }
 
+    function renderExternalResults(items) {
+        const container = document.getElementById("external-search-results");
+        if (!container) {
+            return;
+        }
+
+        if (!items.length) {
+            container.innerHTML = '<p class="muted">一致する作品が見つかりませんでした。</p>';
+            return;
+        }
+
+        container.innerHTML = items.map((item, index) => createExternalResultHtml(item, index)).join("");
+    }
+
+    async function searchExternalAnime(query) {
+        const error = document.getElementById("external-search-error");
+        const status = document.getElementById("external-search-status");
+        const submit = document.getElementById("external-search-submit");
+
+        submit.disabled = true;
+        error.hidden = true;
+        error.textContent = "";
+        status.hidden = false;
+        status.textContent = "検索中...";
+
+        try {
+            const response = await fetch(`/api/anime/external-search/?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "外部検索に失敗しました。");
+            }
+
+            externalSearchState.items = Array.isArray(data.items) ? data.items : [];
+            renderExternalResults(externalSearchState.items);
+            status.hidden = true;
+        } catch (err) {
+            status.hidden = true;
+            error.textContent = err.message;
+            error.hidden = false;
+        } finally {
+            submit.disabled = false;
+        }
+    }
+
+    async function addExternalAnime(index, button) {
+        const error = document.getElementById("external-search-error");
+        const item = externalSearchState.items[index];
+        if (!item) {
+            return;
+        }
+
+        error.hidden = true;
+        error.textContent = "";
+        button.disabled = true;
+
+        try {
+            const response = await fetch("/api/anime/external-add/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    title: item.title,
+                    image_url: item.image_url || "",
+                    year: item.year,
+                    season: item.season,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "追加に失敗しました。");
+            }
+
+            const anime = data.anime;
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = createCardHtml(anime, "unscored").trim();
+            const card = wrapper.firstElementChild;
+            if (!card) {
+                throw new Error("カード作成に失敗しました。");
+            }
+
+            attachCardEvents(card);
+            const unscoredGrid = document.getElementById("unscored-grid");
+            if (unscoredGrid) {
+                unscoredGrid.prepend(card);
+            }
+            updateEmptyMessages();
+
+            button.textContent = "追加済み";
+        } catch (err) {
+            button.disabled = false;
+            error.textContent = err.message;
+            error.hidden = false;
+        }
+    }
+
     function setupInlineAddForm() {
         const form = document.getElementById("inline-add-form");
         const panel = document.getElementById("inline-add-panel");
@@ -851,11 +989,42 @@
         setPanelOpen(false);
     }
 
+    function setupExternalSearch() {
+        const form = document.getElementById("external-search-form");
+        const queryInput = document.getElementById("external-search-query");
+        const results = document.getElementById("external-search-results");
+        if (!form || !queryInput || !results) {
+            return;
+        }
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const query = queryInput.value.trim();
+            if (query.length < 2) {
+                return;
+            }
+            searchExternalAnime(query);
+        });
+
+        results.addEventListener("click", (event) => {
+            const button = event.target.closest(".js-external-add");
+            if (!button) {
+                return;
+            }
+            const index = Number(button.dataset.index);
+            if (Number.isNaN(index)) {
+                return;
+            }
+            addExternalAnime(index, button);
+        });
+    }
+
     document.querySelectorAll(".js-anime-card").forEach((card) => attachCardEvents(card));
     setupDragSort();
     setupRankBucketSorts();
     setupRankViewToggle();
     setupInlineAddForm();
+    setupExternalSearch();
     applyRankViewMode("flat");
     updateEmptyMessages();
     refreshRankIndices();
