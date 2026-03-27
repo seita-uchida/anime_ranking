@@ -167,3 +167,11 @@ def anime_inline_update(request, anime_id):
 			},
 		}
 	)
+
+
+@login_required
+@require_POST
+def anime_delete(request, anime_id):
+	anime = get_object_or_404(Anime, pk=anime_id)
+	anime.delete()
+	return JsonResponse({"ok": True, "deleted_id": anime_id})

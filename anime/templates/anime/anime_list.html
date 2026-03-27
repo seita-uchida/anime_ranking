@@ -66,6 +66,7 @@
                             <button type="button" class="mini-btn js-edit-toggle">編集</button>
                             <button type="button" class="mini-btn js-save" hidden>保存</button>
                             <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
+                            <button type="button" class="mini-btn danger js-delete">削除</button>
                         </div>
                         <p class="edit-error js-edit-error" hidden></p>
                     </div>
@@ -105,6 +106,7 @@
                             <button type="button" class="mini-btn js-edit-toggle">編集</button>
                             <button type="button" class="mini-btn js-save" hidden>保存</button>
                             <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
+                            <button type="button" class="mini-btn danger js-delete">削除</button>
                         </div>
                         <p class="edit-error js-edit-error" hidden></p>
                     </div>
@@ -204,6 +206,7 @@
                         <button type="button" class="mini-btn js-edit-toggle">編集</button>
                         <button type="button" class="mini-btn js-save" hidden>保存</button>
                         <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
+                        <button type="button" class="mini-btn danger js-delete">削除</button>
                     </div>
                     <p class="edit-error js-edit-error" hidden></p>
                 </div>
@@ -277,6 +280,39 @@
         }
     }
 
+    async function deleteCard(card) {
+        const animeId = card.dataset.animeId;
+        const title = card.querySelector(".js-title-text")?.textContent?.trim() || "この作品";
+        const error = card.querySelector(".js-edit-error");
+        const btnDelete = card.querySelector(".js-delete");
+
+        if (!window.confirm(`「${title}」を削除しますか？`)) {
+            return;
+        }
+
+        btnDelete.disabled = true;
+        error.hidden = true;
+
+        try {
+            const response = await fetch(`/api/anime/${animeId}/delete/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCsrfToken(),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "削除に失敗しました。");
+            }
+
+            card.remove();
+        } catch (err) {
+            error.textContent = err.message;
+            error.hidden = false;
+            btnDelete.disabled = false;
+        }
+    }
+
     function attachCardEvents(card) {
         const titleInput = card.querySelector(".js-title-input");
         const scoreInput = card.querySelector(".js-score-input");
@@ -295,6 +331,10 @@
 
         card.querySelector(".js-save").addEventListener("click", () => {
             saveCard(card);
+        });
+
+        card.querySelector(".js-delete").addEventListener("click", () => {
+            deleteCard(card);
         });
     }
 
