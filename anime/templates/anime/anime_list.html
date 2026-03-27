@@ -103,6 +103,7 @@
                     {% endif %}
                     <div class="anime-meta">
                         <div class="anime-title js-title-text">{{ anime.title }}</div>
+                        <div class="anime-subtle-meta">{{ anime.year }} / {{ anime.season }}</div>
                         <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
                         <div class="anime-score-line js-score-view">
                             {% if anime.rank %}
@@ -146,6 +147,7 @@
                     {% endif %}
                     <div class="anime-meta">
                         <div class="anime-title js-title-text">{{ anime.title }}</div>
+                        <div class="anime-subtle-meta">{{ anime.year }} / {{ anime.season }}</div>
                         <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
                         <div class="anime-score-line js-score-view">
                             <span class="rank-badge js-rank-badge unscored">未評価</span>
@@ -156,7 +158,7 @@
                             <button type="button" class="mini-btn js-edit-toggle">編集</button>
                             <button type="button" class="mini-btn js-save" hidden>保存</button>
                             <button type="button" class="mini-btn ghost js-cancel" hidden>キャンセル</button>
-                            <button type="button" class="mini-btn danger js-delete">削除</button>
+                            <button type="button" class="mini-btn danger js-delete">✖</button>
                         </div>
                         <p class="edit-error js-edit-error" hidden></p>
                     </div>
@@ -238,6 +240,8 @@
 
     function createCardHtml(anime, zone) {
         const title = escapeHtml(anime.title);
+        const yearText = anime.year !== undefined && anime.year !== null ? escapeHtml(anime.year) : "-";
+        const seasonText = anime.season !== undefined && anime.season !== null ? escapeHtml(anime.season) : "-";
         const image = anime.image_url
             ? `<img src="${escapeHtml(anime.image_url)}" alt="${title}" class="anime-cover">`
             : '<div class="anime-cover"></div>';
@@ -254,6 +258,7 @@
                 ${image}
                 <div class="anime-meta">
                     <div class="anime-title js-title-text">${title}</div>
+                    <div class="anime-subtle-meta">${yearText} / ${seasonText}</div>
                     <input type="text" class="edit-input js-title-input" value="${title}" maxlength="255" hidden>
                     <div class="anime-score-line js-score-view">
                         ${badge}

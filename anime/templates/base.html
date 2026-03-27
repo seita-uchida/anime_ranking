@@ -403,8 +403,10 @@
 
         .anime-meta {
             margin-top: 8px;
-            display: grid;
+            display: flex;
+            flex-direction: column;
             gap: 5px;
+            min-height: 120px;
         }
 
         .rank-index {
@@ -438,6 +440,15 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
             min-height: 2.7em;
+        }
+
+        .anime-subtle-meta {
+            font-size: 0.72rem;
+            color: rgba(86, 75, 63, 0.72);
+            letter-spacing: 0.03em;
+            margin-top: auto;
+            align-self: flex-end;
+            text-align: right;
         }
 
         .anime-score-line {

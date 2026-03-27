@@ -48,6 +48,8 @@ def _serialize_anime(anime):
 		"id": anime.id,
 		"title": anime.title,
 		"image_url": anime.image_url,
+		"year": anime.year,
+		"season": anime.season,
 		"score": str(anime.score) if anime.score is not None else None,
 		"rank": anime.rank,
 	}
