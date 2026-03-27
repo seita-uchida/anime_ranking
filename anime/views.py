@@ -2,15 +2,18 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import EmptyPage, Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .models import Anime
 
 
-@login_required
-def anime_list(request):
+LIST_PAGE_SIZE = 24
+
+
+def _get_filtered_queryset(request):
 	selected_year = request.GET.get("year", "")
 	selected_season = request.GET.get("season", "")
 
@@ -27,25 +30,87 @@ def anime_list(request):
 	if selected_season:
 		base_queryset = base_queryset.filter(season=selected_season)
 
-	ranked_anime = base_queryset.filter(score__isnull=False).order_by(
+	return base_queryset, selected_year, selected_season
+
+
+def _serialize_anime(anime):
+	return {
+		"id": anime.id,
+		"title": anime.title,
+		"image_url": anime.image_url,
+		"score": str(anime.score) if anime.score is not None else None,
+		"rank": anime.rank,
+	}
+
+
+@login_required
+def anime_list(request):
+	base_queryset, selected_year, selected_season = _get_filtered_queryset(request)
+
+	ranked_qs = base_queryset.filter(score__isnull=False).order_by(
 		"-score", "-year", "season", "title"
 	)
-	unscored_anime = base_queryset.filter(score__isnull=True).order_by(
+	unscored_qs = base_queryset.filter(score__isnull=True).order_by(
 		"-year", "season", "title"
 	)
+
+	ranked_page = Paginator(ranked_qs, LIST_PAGE_SIZE).get_page(1)
+	unscored_page = Paginator(unscored_qs, LIST_PAGE_SIZE).get_page(1)
 	available_years = Anime.objects.values_list("year", flat=True).distinct().order_by("-year")
 
 	return render(
 		request,
 		"anime/anime_list.html",
 		{
-			"ranked_anime": ranked_anime,
-			"unscored_anime": unscored_anime,
+			"ranked_anime": ranked_page.object_list,
+			"unscored_anime": unscored_page.object_list,
+			"ranked_has_next": ranked_page.has_next(),
+			"unscored_has_next": unscored_page.has_next(),
+			"ranked_next_page": ranked_page.next_page_number() if ranked_page.has_next() else None,
+			"unscored_next_page": unscored_page.next_page_number() if unscored_page.has_next() else None,
 			"available_years": available_years,
 			"season_choices": Anime.SEASON_CHOICES,
 			"selected_year": selected_year,
 			"selected_season": selected_season,
 		},
+	)
+
+
+@login_required
+@require_GET
+def anime_list_chunk(request):
+	zone = request.GET.get("zone", "ranked")
+	if zone not in ("ranked", "unscored"):
+		return JsonResponse({"ok": False, "error": "zone が不正です。"}, status=400)
+
+	page_raw = request.GET.get("page", "1")
+	try:
+		page_num = int(page_raw)
+	except ValueError:
+		return JsonResponse({"ok": False, "error": "page が不正です。"}, status=400)
+
+	if page_num < 1:
+		return JsonResponse({"ok": False, "error": "page は1以上です。"}, status=400)
+
+	base_queryset, _, _ = _get_filtered_queryset(request)
+	if zone == "ranked":
+		queryset = base_queryset.filter(score__isnull=False).order_by("-score", "-year", "season", "title")
+	else:
+		queryset = base_queryset.filter(score__isnull=True).order_by("-year", "season", "title")
+
+	paginator = Paginator(queryset, LIST_PAGE_SIZE)
+	try:
+		page_obj = paginator.page(page_num)
+	except EmptyPage:
+		return JsonResponse({"ok": True, "items": [], "has_next": False, "next_page": None})
+
+	return JsonResponse(
+		{
+			"ok": True,
+			"items": [_serialize_anime(anime) for anime in page_obj.object_list],
+			"has_next": page_obj.has_next(),
+			"next_page": page_obj.next_page_number() if page_obj.has_next() else None,
+		}
 	)
 
 
