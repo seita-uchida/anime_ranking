@@ -39,7 +39,7 @@
         <div class="section-head">
             <h2 class="section-title">ランキング一覧</h2>
         </div>
-        <p class="muted">画像の下にタイトル・ランク・点数を表示します。</p>
+        <p class="muted">画像の下にタイトル・ランク・点数を表示します。ドラッグで順位変更できます。</p>
         {% if selected_year or selected_season %}
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
         {% endif %}
@@ -121,6 +121,7 @@
     </section>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (() => {
     const RANK_CLASSES = ["rank-S", "rank-A", "rank-B", "rank-C", "rank-F", "unscored"];
@@ -228,6 +229,67 @@
 
         card.dataset.zone = newZone;
         targetGrid.prepend(card);
+    }
+
+    function updateCardScore(card, anime) {
+        const scoreText = card.querySelector(".js-score-text");
+        const scoreInput = card.querySelector(".js-score-input");
+        const badge = card.querySelector(".js-rank-badge");
+
+        scoreInput.value = anime.score ?? "";
+        scoreText.textContent = anime.score ? `${anime.score} 点` : "点数なし";
+        setRankBadge(badge, anime.rank);
+    }
+
+    function findSiblingCard(element, direction) {
+        let current = direction === "prev" ? element.previousElementSibling : element.nextElementSibling;
+        while (current) {
+            if (current.classList.contains("js-anime-card") && current.dataset.zone === "ranked") {
+                return current;
+            }
+            current = direction === "prev" ? current.previousElementSibling : current.nextElementSibling;
+        }
+        return null;
+    }
+
+    function restoreCardPosition(container, item, oldIndex) {
+        const children = container.children;
+        if (oldIndex >= children.length) {
+            container.appendChild(item);
+            return;
+        }
+        container.insertBefore(item, children[oldIndex]);
+    }
+
+    async function syncReorder(item, oldIndex) {
+        const animeId = item.dataset.animeId;
+        const prevCard = findSiblingCard(item, "prev");
+        const nextCard = findSiblingCard(item, "next");
+
+        const payload = {
+            prev_id: prevCard ? Number(prevCard.dataset.animeId) : null,
+            next_id: nextCard ? Number(nextCard.dataset.animeId) : null,
+        };
+
+        try {
+            const response = await fetch(`/api/anime/${animeId}/reorder/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "並び替え更新に失敗しました。");
+            }
+
+            updateCardScore(item, data.anime);
+        } catch (err) {
+            restoreCardPosition(item.parentElement, item, oldIndex);
+            window.alert(err.message);
+        }
     }
 
     async function saveCard(card) {
@@ -408,7 +470,30 @@
         observer.observe(sentinel);
     }
 
+    function setupDragSort() {
+        const rankedGrid = document.getElementById("ranked-grid");
+        if (!rankedGrid || !window.Sortable) {
+            return;
+        }
+
+        Sortable.create(rankedGrid, {
+            animation: 160,
+            ghostClass: "drag-ghost",
+            chosenClass: "drag-chosen",
+            draggable: ".js-anime-card[data-zone='ranked']",
+            filter: ".edit-input, .mini-btn",
+            preventOnFilter: false,
+            onEnd: (evt) => {
+                if (evt.oldIndex === evt.newIndex) {
+                    return;
+                }
+                syncReorder(evt.item, evt.oldIndex);
+            },
+        });
+    }
+
     document.querySelectorAll(".js-anime-card").forEach((card) => attachCardEvents(card));
+    setupDragSort();
     setupInfiniteScroll("ranked");
     setupInfiniteScroll("unscored");
 })();

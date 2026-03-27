@@ -11,6 +11,7 @@ from .models import Anime
 
 
 LIST_PAGE_SIZE = 24
+SCORE_STEP = Decimal("0.1")
 
 
 def _get_filtered_queryset(request):
@@ -164,6 +165,69 @@ def anime_inline_update(request, anime_id):
 				"title": anime.title,
 				"score": str(anime.score) if anime.score is not None else None,
 				"rank": anime.rank,
+			},
+		}
+	)
+
+
+@login_required
+@require_POST
+def anime_reorder(request, anime_id):
+	moved = get_object_or_404(Anime, pk=anime_id)
+	if moved.score is None:
+		return JsonResponse({"ok": False, "error": "未評価作品は並び替えできません。"}, status=400)
+
+	try:
+		payload = json.loads(request.body.decode("utf-8"))
+	except (json.JSONDecodeError, UnicodeDecodeError):
+		return JsonResponse({"ok": False, "error": "JSON形式が不正です。"}, status=400)
+
+	prev_id = payload.get("prev_id")
+	next_id = payload.get("next_id")
+
+	prev_anime = None
+	next_anime = None
+
+	if prev_id is not None:
+		try:
+			prev_anime = Anime.objects.get(pk=int(prev_id), score__isnull=False)
+		except (ValueError, Anime.DoesNotExist):
+			return JsonResponse({"ok": False, "error": "前の作品が見つかりません。"}, status=400)
+
+	if next_id is not None:
+		try:
+			next_anime = Anime.objects.get(pk=int(next_id), score__isnull=False)
+		except (ValueError, Anime.DoesNotExist):
+			return JsonResponse({"ok": False, "error": "次の作品が見つかりません。"}, status=400)
+
+	if prev_anime and next_anime and prev_anime.score <= next_anime.score:
+		return JsonResponse({"ok": False, "error": "並び替え情報が不正です。"}, status=400)
+
+	if prev_anime and next_anime:
+		new_score = (prev_anime.score + next_anime.score) / Decimal("2")
+	elif prev_anime:
+		new_score = prev_anime.score - SCORE_STEP
+	elif next_anime:
+		new_score = next_anime.score + SCORE_STEP
+	else:
+		return JsonResponse({"ok": False, "error": "並び替え先を特定できません。"}, status=400)
+
+	if new_score < Decimal("0.0"):
+		new_score = Decimal("0.0")
+	if new_score > Decimal("100.0"):
+		new_score = Decimal("100.0")
+
+	new_score = new_score.quantize(SCORE_STEP)
+	moved.score = new_score
+	moved.save(update_fields=["score", "updated_at"])
+
+	return JsonResponse(
+		{
+			"ok": True,
+			"anime": {
+				"id": moved.id,
+				"score": str(moved.score),
+				"rank": moved.rank,
 			},
 		}
 	)
