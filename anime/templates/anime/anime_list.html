@@ -36,7 +36,9 @@
     </section>
 
     <section class="card">
-        <h2 style="margin-top: 0;">ランキング一覧</h2>
+        <div class="section-head">
+            <h2 class="section-title">ランキング一覧</h2>
+        </div>
         <p class="muted">画像の下にタイトル・ランク・点数を表示します。</p>
         {% if selected_year or selected_season %}
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
@@ -76,7 +78,9 @@
     </section>
 
     <section class="card">
-        <h2 style="margin-top: 0;">これから見る・未評価</h2>
+        <div class="section-head">
+            <h2 class="section-title">これから見る・未評価</h2>
+        </div>
         <p class="muted">点数が未入力の作品です。</p>
         {% if unscored_anime %}
             <div class="anime-grid" id="unscored-grid">

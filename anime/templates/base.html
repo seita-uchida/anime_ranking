@@ -9,6 +9,7 @@
             --bg: #f3f0ea;
             --card: #faf7f1;
             --surface: #fdfbf8;
+            --surface-2: #f7f2ea;
             --text: #1f1b18;
             --muted: #6a6057;
             --line: #d7c9b7;
@@ -37,23 +38,59 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
             gap: 12px;
             flex-wrap: wrap;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #d2c3b1;
         }
 
         .card {
-            background: var(--card);
+            background: linear-gradient(180deg, #fcfaf6 0%, var(--card) 100%);
             border: 1px solid var(--line);
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(30, 25, 20, 0.06);
+            box-shadow: 0 3px 10px rgba(30, 25, 20, 0.06);
             padding: 16px;
+            position: relative;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d6c2a5, transparent);
         }
 
         .topbar h1 {
             color: var(--accent-deep);
             letter-spacing: 0.04em;
             font-weight: 700;
+            font-size: clamp(1.5rem, 2vw, 2rem);
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            gap: 10px;
+        }
+
+        .section-title {
+            margin: 0;
+            color: #503921;
+            letter-spacing: 0.04em;
+            font-size: 1.15rem;
+        }
+
+        .section-head::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, #c5ad8b, transparent);
         }
 
         .btn {
@@ -66,6 +103,13 @@
             color: white;
             text-decoration: none;
             display: inline-block;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(70, 48, 24, 0.25);
+            filter: brightness(1.02);
         }
 
         .btn-secondary {
@@ -169,16 +213,17 @@
         }
 
         .anime-item {
-            background: var(--surface);
+            background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
             border: 1px solid var(--line);
             border-radius: 6px;
             padding: 10px;
-            transition: border-color 0.14s ease, box-shadow 0.14s ease;
+            transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
         }
 
         .anime-item:hover {
             border-color: #b59b7c;
-            box-shadow: 0 4px 10px rgba(45, 35, 25, 0.1);
+            box-shadow: 0 7px 14px rgba(45, 35, 25, 0.12);
+            transform: translateY(-1px);
         }
 
         .anime-cover {
@@ -189,6 +234,11 @@
             background: #eee5da;
             border: 1px solid var(--line);
             display: block;
+            transition: transform 0.22s ease;
+        }
+
+        .anime-item:hover .anime-cover {
+            transform: scale(1.015);
         }
 
         .anime-meta {
@@ -246,6 +296,11 @@
             padding: 4px 8px;
             font-size: 0.78rem;
             cursor: pointer;
+            transition: filter 0.12s ease;
+        }
+
+        .mini-btn:hover {
+            filter: brightness(1.05);
         }
 
         .mini-btn.ghost {
