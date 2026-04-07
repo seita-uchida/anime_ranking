@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ series.title }}{% endblock %}
+
+{% block content %}
+<div class="stack">
+    <section class="card">
+        <div class="section-head">
+            <h2 class="section-title">{{ series.title }}</h2>
+        </div>
+        <p class="muted">平均点: {% if average_score %}{{ average_score }} 点{% else %}未評価{% endif %}</p>
+        <p><a class="btn btn-secondary" href="{% url 'anime_list' %}">一覧へ戻る</a></p>
+    </section>
+
+    <section class="card">
+        <div class="section-head">
+            <h2 class="section-title">シーズン詳細</h2>
+        </div>
+        <div class="anime-grid" id="season-grid">
+            {% for season in seasons %}
+                <article class="anime-item" data-season-id="{{ season.id }}">
+                    {% if season.image_url %}
+                        <img src="{{ season.image_url }}" alt="{{ season.season_title }}" class="anime-cover">
+                    {% else %}
+                        <div class="anime-cover"></div>
+                    {% endif %}
+                    <div class="anime-meta">
+                        <div class="anime-title js-season-title">{{ season.season_title }}</div>
+                        <input type="text" class="edit-input js-season-title-input" value="{{ season.season_title }}" maxlength="255" hidden>
+                        <div class="anime-subtle-meta">{{ season.year }} / {{ season.season_name }}</div>
+                        <div class="anime-score-line js-score-view">
+                            <span class="rank-badge {% if season.rank %}rank-{{ season.rank }}{% else %}unscored{% endif %} js-rank-badge">{{ season.rank|default:'未評価' }}</span>
+                            <span class="js-score-text">{% if season.score %}{{ season.score }} 点{% else %}点数なし{% endif %}</span>
+                        </div>
+                        <input type="number" class="edit-input js-score-input" min="0" max="100" step="0.1" value="{{ season.score|default:'' }}" hidden>
+                        <label class="muted">
+                            <input type="checkbox" class="js-primary-input" {% if season.is_primary %}checked{% endif %} hidden>
+                            代表シーズン
+                        </label>
+                        <div class="edit-actions">
+                            <button type="button" class="mini-btn js-edit">編集</button>
+                            <button type="button" class="mini-btn js-save" hidden>保存</button>
+                            <button type="button" class="mini-btn ghost js-cancel" hidden>取消</button>
+                        </div>
+                        <p class="edit-error js-error" hidden></p>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const grid = document.getElementById("season-grid");
+
+    function getCsrfToken() {
+        const cookie = document.cookie.split(";").map(v => v.trim()).find(v => v.startsWith("csrftoken="));
+        return cookie ? decodeURIComponent(cookie.slice("csrftoken=".length)) : "";
+    }
+
+    grid.addEventListener("click", async (event) => {
+        const card = event.target.closest(".anime-item");
+        if (!card) {
+            return;
+        }
+
+        const title = card.querySelector(".js-season-title");
+        const titleInput = card.querySelector(".js-season-title-input");
+        const scoreView = card.querySelector(".js-score-view");
+        const scoreInput = card.querySelector(".js-score-input");
+        const primaryInput = card.querySelector(".js-primary-input");
+        const editBtn = card.querySelector(".js-edit");
+        const saveBtn = card.querySelector(".js-save");
+        const cancelBtn = card.querySelector(".js-cancel");
+        const error = card.querySelector(".js-error");
+
+        if (event.target.classList.contains("js-edit")) {
+            title.hidden = true;
+            titleInput.hidden = false;
+            scoreView.hidden = true;
+            scoreInput.hidden = false;
+            primaryInput.hidden = false;
+            editBtn.hidden = true;
+            saveBtn.hidden = false;
+            cancelBtn.hidden = false;
+            return;
+        }
+
+        if (event.target.classList.contains("js-cancel")) {
+            titleInput.value = title.textContent;
+            title.hidden = false;
+            titleInput.hidden = true;
+            scoreView.hidden = false;
+            scoreInput.hidden = true;
+            primaryInput.hidden = true;
+            editBtn.hidden = false;
+            saveBtn.hidden = true;
+            cancelBtn.hidden = true;
+            error.hidden = true;
+            return;
+        }
+
+        if (event.target.classList.contains("js-save")) {
+            const res = await fetch(`/api/season/${card.dataset.seasonId}/inline-update/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify({
+                    season_title: titleInput.value,
+                    score: scoreInput.value,
+                    is_primary: primaryInput.checked,
+                }),
+            });
+            const payload = await res.json();
+            if (!res.ok || !payload.ok) {
+                error.hidden = false;
+                error.textContent = payload.error || "保存に失敗しました。";
+                return;
+            }
+
+            title.textContent = payload.season.season_title;
+            title.hidden = false;
+            titleInput.hidden = true;
+            scoreView.hidden = false;
+            scoreInput.hidden = true;
+            primaryInput.hidden = true;
+            editBtn.hidden = false;
+            saveBtn.hidden = true;
+            cancelBtn.hidden = true;
+            error.hidden = true;
+
+            const rankBadge = card.querySelector(".js-rank-badge");
+            const scoreText = card.querySelector(".js-score-text");
+            rankBadge.className = `rank-badge ${payload.season.rank ? `rank-${payload.season.rank}` : "unscored"} js-rank-badge`;
+            rankBadge.textContent = payload.season.rank || "未評価";
+            scoreText.textContent = payload.season.score ? `${payload.season.score} 点` : "点数なし";
+        }
+    });
+})();
+</script>
+{% endblock %}

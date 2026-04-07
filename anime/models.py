@@ -3,7 +3,20 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
-class Anime(models.Model):
+class Series(models.Model):
+    title = models.CharField("作品名", max_length=255, unique=True)
+    created_at = models.DateTimeField("登録日時", auto_now_add=True)
+
+    class Meta:
+        ordering = ["title"]
+        verbose_name = "シリーズ"
+        verbose_name_plural = "シリーズ"
+
+    def __str__(self):
+        return self.title
+
+
+class Season(models.Model):
     SEASON_SPRING = "春"
     SEASON_SUMMER = "夏"
     SEASON_AUTUMN = "秋"
@@ -16,7 +29,8 @@ class Anime(models.Model):
         (SEASON_WINTER, "冬"),
     ]
 
-    title = models.CharField("アニメ名", max_length=255)
+    series = models.ForeignKey(Series, on_delete=models.CASCADE, related_name="seasons")
+    season_title = models.CharField("シーズン名", max_length=255)
     image_url = models.URLField("画像URL", blank=True)
     score = models.DecimalField(
         "点数",
@@ -31,17 +45,23 @@ class Anime(models.Model):
         help_text="0.0〜100.0（未評価は空欄）",
     )
     year = models.IntegerField("放送年度")
-    season = models.CharField("放送シーズン", max_length=1, choices=SEASON_CHOICES)
-    created_at = models.DateTimeField("登録日時", auto_now_add=True)
+    season_name = models.CharField("放送シーズン", max_length=1, choices=SEASON_CHOICES)
+    is_primary = models.BooleanField("代表シーズン", default=False)
     updated_at = models.DateTimeField("更新日時", auto_now=True)
 
     class Meta:
-        ordering = ["-score", "-year", "season", "title"]
-        verbose_name = "アニメ"
-        verbose_name_plural = "アニメ"
+        ordering = ["-year", "season_name", "season_title"]
+        verbose_name = "シーズン"
+        verbose_name_plural = "シーズン"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series", "season_title"],
+                name="uniq_series_season_title",
+            ),
+        ]
 
     def __str__(self):
-        return f"{self.title} ({self.year} {self.season})"
+        return f"{self.series.title} {self.season_title} ({self.year} {self.season_name})"
 
     @property
     def rank(self):
