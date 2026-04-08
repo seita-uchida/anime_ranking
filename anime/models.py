@@ -32,6 +32,7 @@ class Anime(models.Model):
     )
     year = models.IntegerField("放送年度")
     season = models.CharField("放送シーズン", max_length=1, choices=SEASON_CHOICES)
+    is_main = models.BooleanField("総合ランキング掲載", default=False)
     created_at = models.DateTimeField("登録日時", auto_now_add=True)
     updated_at = models.DateTimeField("更新日時", auto_now=True)
 
@@ -47,6 +48,8 @@ class Anime(models.Model):
     def rank(self):
         if self.score is None:
             return None
+        if self.score >= Decimal("95.0"):
+            return "SS"
         if self.score >= Decimal("90.0"):
             return "S"
         if self.score >= Decimal("80.0"):

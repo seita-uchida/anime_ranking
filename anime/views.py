@@ -18,7 +18,8 @@ from .models import Anime
 LIST_PAGE_SIZE = 24
 SCORE_STEP = Decimal("0.1")
 RANK_BOUNDS = {
-	"S": (Decimal("90.0"), Decimal("100.0")),
+	"SS": (Decimal("95.0"), Decimal("100.0")),
+	"S": (Decimal("90.0"), Decimal("94.9")),
 	"A": (Decimal("80.0"), Decimal("89.9")),
 	"B": (Decimal("70.0"), Decimal("79.9")),
 	"C": (Decimal("60.0"), Decimal("69.9")),
@@ -67,8 +68,21 @@ def _serialize_anime(anime):
 		"year": anime.year,
 		"season": anime.season,
 		"score": str(anime.score) if anime.score is not None else None,
+		"is_main": anime.is_main,
 		"rank": anime.rank,
 	}
+
+
+def _parse_bool(value, default=False):
+	if isinstance(value, bool):
+		return value
+	if value is None:
+		return default
+	if isinstance(value, (int, float)):
+		return bool(value)
+	if isinstance(value, str):
+		return value.strip().lower() in {"1", "true", "yes", "on"}
+	return default
 
 
 def _current_year_and_season():
@@ -123,9 +137,13 @@ def _extract_year_season_from_jikan(item, fallback_year, fallback_season):
 @login_required
 def anime_list(request):
 	base_queryset, selected_year, selected_season = _get_filtered_queryset(request)
+	ranked_mode = "season" if (selected_year or selected_season) else "main"
 	current_year, current_season = _current_year_and_season()
 
-	ranked_qs = base_queryset.filter(score__isnull=False).order_by(
+	ranked_qs = base_queryset.filter(score__isnull=False)
+	if ranked_mode == "main":
+		ranked_qs = ranked_qs.filter(is_main=True)
+	ranked_qs = ranked_qs.order_by(
 		"-score", "-year", "season", "title"
 	)
 	unscored_qs = base_queryset.filter(score__isnull=True).order_by(
@@ -150,6 +168,7 @@ def anime_list(request):
 			"season_choices": Anime.SEASON_CHOICES,
 			"selected_year": selected_year,
 			"selected_season": selected_season,
+			"selected_ranked_mode": ranked_mode,
 			"current_year": current_year,
 			"current_season": current_season,
 			"default_score": "80.0",
@@ -173,9 +192,13 @@ def anime_list_chunk(request):
 	if page_num < 1:
 		return JsonResponse({"ok": False, "error": "page は1以上です。"}, status=400)
 
-	base_queryset, _, _ = _get_filtered_queryset(request)
+	base_queryset, selected_year, selected_season = _get_filtered_queryset(request)
+	ranked_mode = "season" if (selected_year or selected_season) else "main"
 	if zone == "ranked":
-		queryset = base_queryset.filter(score__isnull=False).order_by("-score", "-year", "season", "title")
+		queryset = base_queryset.filter(score__isnull=False)
+		if ranked_mode == "main":
+			queryset = queryset.filter(is_main=True)
+		queryset = queryset.order_by("-score", "-year", "season", "title")
 	else:
 		queryset = base_queryset.filter(score__isnull=True).order_by("-year", "season", "title")
 
@@ -210,7 +233,7 @@ def anime_external_search(request):
 		return JsonResponse({"ok": False, "error": "シーズン指定が不正です。"}, status=400)
 
 	current_year, current_season = _current_year_and_season()
-	selected_year = current_year
+	selected_year = None
 	if selected_year_raw:
 		try:
 			selected_year = int(selected_year_raw)
@@ -309,6 +332,7 @@ def anime_external_add(request):
 	image_url = str(payload.get("image_url", "")).strip()
 	season = str(payload.get("season", "")).strip()
 	score_raw = payload.get("score")
+	is_main = _parse_bool(payload.get("is_main"), default=False)
 
 	if not title:
 		return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
@@ -346,6 +370,7 @@ def anime_external_add(request):
 		year=year,
 		season=season,
 		score=parsed_score,
+		is_main=is_main,
 	)
 
 	return JsonResponse({"ok": True, "anime": _serialize_anime(anime)})
@@ -363,45 +388,49 @@ def anime_inline_update(request, anime_id):
 
 	title = payload.get("title")
 	score = payload.get("score")
+	has_title = "title" in payload
+	has_score = "score" in payload
+	has_is_main = "is_main" in payload
 
-	if title is None:
-		return JsonResponse({"ok": False, "error": "title は必須です。"}, status=400)
+	if not (has_title or has_score or has_is_main):
+		return JsonResponse({"ok": False, "error": "更新項目がありません。"}, status=400)
 
-	title = str(title).strip()
-	if not title:
-		return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
-	if len(title) > 255:
-		return JsonResponse({"ok": False, "error": "タイトルが長すぎます。"}, status=400)
+	if has_title:
+		title = str(title).strip()
+		if not title:
+			return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
+		if len(title) > 255:
+			return JsonResponse({"ok": False, "error": "タイトルが長すぎます。"}, status=400)
+		anime.title = title
 
-	parsed_score = None
-	if score not in (None, ""):
-		try:
-			parsed_score = Decimal(str(score))
-		except (InvalidOperation, ValueError):
-			return JsonResponse({"ok": False, "error": "点数は数値で入力してください。"}, status=400)
+	if has_score:
+		parsed_score = None
+		if score not in (None, ""):
+			try:
+				parsed_score = Decimal(str(score))
+			except (InvalidOperation, ValueError):
+				return JsonResponse({"ok": False, "error": "点数は数値で入力してください。"}, status=400)
 
-		if parsed_score < Decimal("0.0") or parsed_score > Decimal("100.0"):
-			return JsonResponse({"ok": False, "error": "点数は0.0〜100.0で入力してください。"}, status=400)
+			if parsed_score < Decimal("0.0") or parsed_score > Decimal("100.0"):
+				return JsonResponse({"ok": False, "error": "点数は0.0〜100.0で入力してください。"}, status=400)
 
-		# decimal_places=1 を満たすようにチェック
-		if parsed_score.as_tuple().exponent < -1:
-			return JsonResponse({"ok": False, "error": "点数は0.1刻みで入力してください。"}, status=400)
+			# decimal_places=1 を満たすようにチェック
+			if parsed_score.as_tuple().exponent < -1:
+				return JsonResponse({"ok": False, "error": "点数は0.1刻みで入力してください。"}, status=400)
 
-		parsed_score = parsed_score.quantize(Decimal("0.1"))
+			parsed_score = parsed_score.quantize(Decimal("0.1"))
 
-	anime.title = title
-	anime.score = parsed_score
+		anime.score = parsed_score
+
+	if has_is_main:
+		anime.is_main = _parse_bool(payload.get("is_main"), default=False)
+
 	anime.save()
 
 	return JsonResponse(
 		{
 			"ok": True,
-			"anime": {
-				"id": anime.id,
-				"title": anime.title,
-				"score": str(anime.score) if anime.score is not None else None,
-				"rank": anime.rank,
-			},
+			"anime": _serialize_anime(anime),
 		}
 	)
 
@@ -419,6 +448,7 @@ def anime_inline_create(request):
 	year_raw = payload.get("year")
 	season = str(payload.get("season", "")).strip()
 	score_raw = payload.get("score")
+	is_main = _parse_bool(payload.get("is_main"), default=False)
 
 	if not title:
 		return JsonResponse({"ok": False, "error": "タイトルは必須です。"}, status=400)
@@ -453,6 +483,7 @@ def anime_inline_create(request):
 		year=year,
 		season=season,
 		score=parsed_score,
+		is_main=is_main,
 	)
 
 	return JsonResponse({"ok": True, "anime": _serialize_anime(anime)})
@@ -532,6 +563,7 @@ def anime_reorder(request, anime_id):
 				"id": moved.id,
 				"score": str(moved.score),
 				"rank": moved.rank,
+				"is_main": moved.is_main,
 			},
 		}
 	)

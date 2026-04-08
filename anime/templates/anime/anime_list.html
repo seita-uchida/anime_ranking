@@ -12,38 +12,6 @@
             <button type="button" class="btn" id="inline-add-toggle" aria-expanded="false" aria-controls="inline-add-panel">追加フォームを表示</button>
         </div>
         <div id="inline-add-panel" hidden>
-            <form class="inline-add-form" id="inline-add-form">
-                <div class="add-field add-title">
-                    <label for="add-title" class="filter-label">タイトル</label>
-                    <input id="add-title" name="title" class="filter-input" type="text" maxlength="255" required>
-                </div>
-                <div class="add-field">
-                    <label for="add-score" class="filter-label">点数（空欄で未評価）</label>
-                    <input id="add-score" name="score" class="filter-input" type="number" min="0" max="100" step="0.1" value="{{ default_score }}">
-                </div>
-                <div class="add-field">
-                    <label for="add-year" class="filter-label">年度</label>
-                    <input id="add-year" name="year" class="filter-input" type="number" value="{{ current_year }}" required>
-                </div>
-                <div class="add-field">
-                    <label for="add-season" class="filter-label">シーズン</label>
-                    <select id="add-season" name="season" class="filter-input" required>
-                        {% for value, label in season_choices %}
-                            <option value="{{ value }}" {% if value == current_season %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="add-field add-url">
-                    <label for="add-image-url" class="filter-label">画像URL（任意）</label>
-                    <input id="add-image-url" name="image_url" class="filter-input" type="url">
-                </div>
-                <div class="add-actions">
-                    <button type="submit" class="btn" id="inline-add-submit">追加</button>
-                    <button type="button" class="btn btn-secondary" id="inline-add-hide">閉じる</button>
-                </div>
-            </form>
-            <p class="edit-error" id="inline-add-error" hidden></p>
-
             <div class="external-search-wrap">
                 <form class="external-search-form" id="external-search-form">
                     <input
@@ -59,7 +27,6 @@
                         min="1900"
                         max="2100"
                         placeholder="年度"
-                        value="{{ current_year }}"
                         aria-label="外部検索年度"
                     >
                     <select id="external-search-season" class="filter-input" aria-label="外部検索シーズン">
@@ -84,6 +51,15 @@
                         >
                     </div>
                 </div>
+                <div class="external-score-row">
+                    <label for="external-search-is-main" class="filter-label">追加時に総合ランキング掲載にする</label>
+                    <div class="external-score-controls">
+                        <label class="check-pill compact">
+                            <input id="external-search-is-main" type="checkbox">
+                            <span>主シーズン</span>
+                        </label>
+                    </div>
+                </div>
                 <p class="muted">検索結果から追加時、点数空欄なら評価待ち（未評価）になります。</p>
                 <p class="edit-error" id="external-search-error" hidden></p>
                 <div class="infinite-status" id="external-search-status" hidden>検索中...</div>
@@ -91,6 +67,50 @@
                 <div class="external-search-actions">
                     <button type="button" class="btn btn-secondary" id="external-search-more" hidden>もっと見る</button>
                     <button type="button" class="btn btn-secondary" id="external-search-hide">閉じる</button>
+                </div>
+            </div>
+
+            <div class="manual-add-wrap">
+                <button type="button" class="btn btn-secondary" id="manual-add-toggle" aria-expanded="false" aria-controls="manual-add-panel">手動で追加する</button>
+                <div id="manual-add-panel" hidden>
+                    <form class="inline-add-form" id="inline-add-form">
+                        <div class="add-field add-title">
+                            <label for="add-title" class="filter-label">タイトル</label>
+                            <input id="add-title" name="title" class="filter-input" type="text" maxlength="255" required>
+                        </div>
+                        <div class="add-field">
+                            <label for="add-score" class="filter-label">点数（空欄で未評価）</label>
+                            <input id="add-score" name="score" class="filter-input" type="number" min="0" max="100" step="0.1" value="{{ default_score }}">
+                        </div>
+                        <div class="add-field">
+                            <label for="add-year" class="filter-label">年度</label>
+                            <input id="add-year" name="year" class="filter-input" type="number" value="{{ current_year }}" required>
+                        </div>
+                        <div class="add-field">
+                            <label for="add-season" class="filter-label">シーズン</label>
+                            <select id="add-season" name="season" class="filter-input" required>
+                                {% for value, label in season_choices %}
+                                    <option value="{{ value }}" {% if value == current_season %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="add-field add-url">
+                            <label for="add-image-url" class="filter-label">画像URL（任意）</label>
+                            <input id="add-image-url" name="image_url" class="filter-input" type="url">
+                        </div>
+                        <div class="add-field">
+                            <label for="add-is-main" class="filter-label">総合ランキング掲載</label>
+                            <label class="check-pill">
+                                <input id="add-is-main" name="is_main" type="checkbox">
+                                <span>主シーズン</span>
+                            </label>
+                        </div>
+                        <div class="add-actions">
+                            <button type="submit" class="btn" id="inline-add-submit">追加</button>
+                            <button type="button" class="btn btn-secondary" id="manual-add-hide">手動追加を閉じる</button>
+                        </div>
+                    </form>
+                    <p class="edit-error" id="inline-add-error" hidden></p>
                 </div>
             </div>
         </div>
@@ -138,7 +158,7 @@
             <button type="button" class="toggle-btn js-rank-view-toggle" data-mode="flat" aria-pressed="true">統合ビュー</button>
             <button type="button" class="toggle-btn js-rank-view-toggle" data-mode="split" aria-pressed="false">ランク別ビュー</button>
         </div>
-        <p class="muted">画像の下にタイトル・ランク・点数を表示します。ドラッグで順位変更できます。</p>
+        <p class="muted">表示モード: {% if selected_ranked_mode == 'main' %}総合（主シーズンのみ）{% else %}シーズンすべて表示{% endif %}。画像の下にタイトル・ランク・点数を表示します。ドラッグで順位変更できます。</p>
         {% if selected_year or selected_season %}
             <p class="active-filter">絞り込み中: {% if selected_year %}{{ selected_year }}年{% else %}全年{% endif %} / {% if selected_season %}{{ selected_season }}{% else %}全シーズン{% endif %}</p>
         {% endif %}
@@ -155,6 +175,10 @@
                         <div class="anime-title js-title-text">{{ anime.title }}</div>
                         <div class="anime-subtle-meta">{{ anime.year }} / {{ anime.season }}</div>
                         <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
+                        <label class="check-pill compact mini-checkline">
+                            <input type="checkbox" class="js-main-check" {% if anime.is_main %}checked{% endif %}>
+                            <span>総合に表示</span>
+                        </label>
                         <div class="anime-score-line js-score-view">
                             {% if anime.rank %}
                                 <span class="rank-badge js-rank-badge rank-{{ anime.rank }}">{{ anime.rank }}</span>
@@ -199,6 +223,10 @@
                         <div class="anime-title js-title-text">{{ anime.title }}</div>
                         <div class="anime-subtle-meta">{{ anime.year }} / {{ anime.season }}</div>
                         <input type="text" class="edit-input js-title-input" value="{{ anime.title }}" maxlength="255" hidden>
+                        <label class="check-pill compact mini-checkline">
+                            <input type="checkbox" class="js-main-check" {% if anime.is_main %}checked{% endif %}>
+                            <span>総合に表示</span>
+                        </label>
                         <div class="anime-score-line js-score-view">
                             <span class="rank-badge js-rank-badge unscored">未評価</span>
                             <span class="js-score-text">点数なし</span>
@@ -221,13 +249,99 @@
     </section>
 </div>
 
+<style>
+.check-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.95rem;
+    border: 1px solid rgba(143, 106, 60, 0.28);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 245, 238, 0.98));
+    box-shadow: 0 8px 22px rgba(90, 64, 34, 0.08);
+    color: #4e3b2a;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    width: fit-content;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.check-pill.compact {
+    padding: 0.55rem 0.8rem;
+    font-size: 0.94rem;
+}
+
+.check-pill:hover {
+    transform: translateY(-1px);
+    border-color: rgba(143, 106, 60, 0.45);
+    box-shadow: 0 10px 24px rgba(90, 64, 34, 0.11);
+}
+
+.check-pill input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.12rem;
+    height: 1.12rem;
+    margin: 0;
+    border: 2px solid rgba(143, 106, 60, 0.5);
+    border-radius: 0.35rem;
+    background: #fff;
+    position: relative;
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.check-pill input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #8f6a3c, #c08a4d);
+    border-color: #8f6a3c;
+    box-shadow: 0 0 0 4px rgba(143, 106, 60, 0.14);
+}
+
+.check-pill input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.32rem;
+    top: 0.08rem;
+    width: 0.34rem;
+    height: 0.62rem;
+    border: solid #fff;
+    border-width: 0 0.16rem 0.16rem 0;
+    transform: rotate(45deg);
+}
+
+.check-pill input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(143, 106, 60, 0.2);
+}
+
+.check-pill span {
+    line-height: 1;
+}
+
+.mini-checkline {
+    margin-top: 0.55rem;
+}
+
+.manual-add-wrap {
+    margin-top: 1rem;
+    border-top: 1px dashed rgba(143, 106, 60, 0.35);
+    padding-top: 0.85rem;
+}
+
+#manual-add-panel {
+    margin-top: 0.8rem;
+}
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (() => {
-    const RANK_CLASSES = ["rank-S", "rank-A", "rank-B", "rank-C", "rank-F", "unscored"];
-    const RANK_ORDER = ["S", "A", "B", "C", "F"];
+    const RANK_CLASSES = ["rank-SS", "rank-S", "rank-A", "rank-B", "rank-C", "rank-F", "unscored"];
+    const RANK_ORDER = ["SS", "S", "A", "B", "C", "F"];
     const FILTER_YEAR = "{{ selected_year|escapejs }}";
     const FILTER_SEASON = "{{ selected_season|escapejs }}";
+    const FILTER_RANKED_MODE = "{{ selected_ranked_mode|default:'main'|escapejs }}";
     const INLINE_DEFAULT_YEAR = "{{ current_year|escapejs }}";
     const INLINE_DEFAULT_SEASON = "{{ current_season|escapejs }}";
     const INLINE_DEFAULT_SCORE = "{{ default_score|escapejs }}";
@@ -310,6 +424,7 @@
         const scoreText = anime.score ? `${escapeHtml(anime.score)} 点` : "点数なし";
         const scoreInput = anime.score ? escapeHtml(anime.score) : "";
         const rankIndex = zone === "ranked" ? '<div class="rank-index js-rank-index"></div>' : "";
+        const mainChecked = anime.is_main ? "checked" : "";
 
         return `
             <article class="anime-item js-anime-card" data-anime-id="${anime.id}" data-zone="${zone}">
@@ -319,6 +434,10 @@
                     <div class="anime-title js-title-text">${title}</div>
                     <div class="anime-subtle-meta">${yearText} / ${seasonText}</div>
                     <input type="text" class="edit-input js-title-input" value="${title}" maxlength="255" hidden>
+                    <label class="mini-checkline">
+                        <input type="checkbox" class="js-main-check" ${mainChecked}>
+                        総合ランキング掲載
+                    </label>
                     <div class="anime-score-line js-score-view">
                         ${badge}
                         <span class="js-score-text">${scoreText}</span>
@@ -379,6 +498,43 @@
         }
         targetGrid.prepend(card);
         updateEmptyMessages();
+    }
+
+    function shouldShowInRanked(anime) {
+        if (anime.score === null || anime.score === undefined || anime.score === "") {
+            return false;
+        }
+        if (FILTER_RANKED_MODE === "season") {
+            return true;
+        }
+        return !!anime.is_main;
+    }
+
+    function placeCardByCurrentFilter(card, anime) {
+        const rankedGrid = document.getElementById("ranked-grid");
+        const unscoredGrid = document.getElementById("unscored-grid");
+        if (!rankedGrid || !unscoredGrid) {
+            return;
+        }
+
+        if (anime.score === null || anime.score === undefined || anime.score === "") {
+            card.dataset.zone = "unscored";
+            unscoredGrid.prepend(card);
+            return;
+        }
+
+        if (shouldShowInRanked(anime)) {
+            card.dataset.zone = "ranked";
+            if (isRankSplitMode) {
+                placeCardInRankBucket(card);
+            } else {
+                rankedGrid.prepend(card);
+            }
+            return;
+        }
+
+        // 主シーズンのみ表示モードで対象外の場合は画面から外す
+        card.remove();
     }
 
     function updateEmptyMessages() {
@@ -516,10 +672,14 @@
         const scoreText = card.querySelector(".js-score-text");
         const scoreInput = card.querySelector(".js-score-input");
         const badge = card.querySelector(".js-rank-badge");
+        const mainCheck = card.querySelector(".js-main-check");
 
         scoreInput.value = anime.score ?? "";
         scoreText.textContent = anime.score ? `${anime.score} 点` : "点数なし";
         setRankBadge(badge, anime.rank);
+        if (mainCheck && Object.prototype.hasOwnProperty.call(anime, "is_main")) {
+            mainCheck.checked = !!anime.is_main;
+        }
     }
 
     function findSiblingCard(element, direction) {
@@ -583,12 +743,14 @@
         const animeId = card.dataset.animeId;
         const titleInput = card.querySelector(".js-title-input");
         const scoreInput = card.querySelector(".js-score-input");
+        const mainCheck = card.querySelector(".js-main-check");
         const error = card.querySelector(".js-edit-error");
         const btnSave = card.querySelector(".js-save");
 
         const payload = {
             title: titleInput.value.trim(),
             score: scoreInput.value.trim(),
+            is_main: mainCheck ? !!mainCheck.checked : false,
         };
 
         btnSave.disabled = true;
@@ -619,13 +781,68 @@
 
             const badge = card.querySelector(".js-rank-badge");
             setRankBadge(badge, anime.rank);
-            moveCardByZone(card, anime.score);
+            if (mainCheck) {
+                mainCheck.checked = !!anime.is_main;
+            }
+            card.remove();
+            placeCardByCurrentFilter(card, anime);
             setEditMode(card, false);
+            updateEmptyMessages();
+            refreshRankIndices();
         } catch (err) {
             error.textContent = err.message;
             error.hidden = false;
         } finally {
             btnSave.disabled = false;
+        }
+    }
+
+    async function updateMainFlag(card, isMain) {
+        const animeId = card.dataset.animeId;
+        const error = card.querySelector(".js-edit-error");
+
+        error.hidden = true;
+        try {
+            const response = await fetch(`/api/anime/${animeId}/inline-update/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                },
+                body: JSON.stringify({ is_main: isMain }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "更新に失敗しました。");
+            }
+
+            const anime = data.anime;
+            const mainCheck = card.querySelector(".js-main-check");
+            if (mainCheck) {
+                mainCheck.checked = !!anime.is_main;
+            }
+
+            if (FILTER_RANKED_MODE === "main" && anime.score) {
+                if (anime.is_main && card.dataset.zone !== "ranked") {
+                    card.remove();
+                    card.dataset.zone = "ranked";
+                    const rankedGrid = document.getElementById("ranked-grid");
+                    if (rankedGrid) {
+                        rankedGrid.prepend(card);
+                    }
+                } else if (!anime.is_main && card.dataset.zone === "ranked") {
+                    card.remove();
+                }
+                updateEmptyMessages();
+                refreshRankIndices();
+            }
+        } catch (err) {
+            const mainCheck = card.querySelector(".js-main-check");
+            if (mainCheck) {
+                mainCheck.checked = !isMain;
+            }
+            error.textContent = err.message;
+            error.hidden = false;
         }
     }
 
@@ -662,6 +879,7 @@
     function attachCardEvents(card) {
         const titleInput = card.querySelector(".js-title-input");
         const scoreInput = card.querySelector(".js-score-input");
+        const mainCheck = card.querySelector(".js-main-check");
 
         card.querySelector(".js-edit-toggle").addEventListener("click", () => {
             titleInput.dataset.original = titleInput.value;
@@ -682,6 +900,12 @@
         card.querySelector(".js-delete").addEventListener("click", () => {
             deleteCard(card);
         });
+
+        if (mainCheck) {
+            mainCheck.addEventListener("change", () => {
+                updateMainFlag(card, mainCheck.checked);
+            });
+        }
     }
 
     async function loadMore(zone) {
@@ -699,6 +923,7 @@
             page: grid.dataset.nextPage,
             year: FILTER_YEAR,
             season: FILTER_SEASON,
+            ranked_mode: FILTER_RANKED_MODE,
         });
 
         try {
@@ -833,6 +1058,7 @@
             year: (formData.get("year") || "").toString().trim(),
             season: (formData.get("season") || "").toString().trim(),
             image_url: (formData.get("image_url") || "").toString().trim(),
+            is_main: !!formData.get("is_main"),
         };
 
         submit.disabled = true;
@@ -854,7 +1080,7 @@
             }
 
             const anime = data.anime;
-            const zone = anime.score ? "ranked" : "unscored";
+            const zone = anime.score && shouldShowInRanked(anime) ? "ranked" : "unscored";
             const wrapper = document.createElement("div");
             wrapper.innerHTML = createCardHtml(anime, zone).trim();
             const card = wrapper.firstElementChild;
@@ -864,13 +1090,8 @@
 
             attachCardEvents(card);
             if (zone === "ranked") {
-                const rankedGrid = document.getElementById("ranked-grid");
-                if (isRankSplitMode) {
-                    placeCardInRankBucket(card);
-                } else if (rankedGrid) {
-                    rankedGrid.prepend(card);
-                }
-            } else {
+                placeCardByCurrentFilter(card, anime);
+            } else if (!anime.score) {
                 const unscoredGrid = document.getElementById("unscored-grid");
                 if (unscoredGrid) {
                     unscoredGrid.prepend(card);
@@ -881,9 +1102,11 @@
             const yearInput = document.getElementById("add-year");
             const seasonInput = document.getElementById("add-season");
             const scoreInput = document.getElementById("add-score");
+            const isMainInput = document.getElementById("add-is-main");
             if (yearInput) yearInput.value = INLINE_DEFAULT_YEAR;
             if (seasonInput) seasonInput.value = INLINE_DEFAULT_SEASON;
             if (scoreInput) scoreInput.value = INLINE_DEFAULT_SCORE;
+            if (isMainInput) isMainInput.checked = false;
             updateEmptyMessages();
             refreshRankIndices();
         } catch (err) {
@@ -1008,6 +1231,7 @@
     async function addExternalAnime(index, button) {
         const error = document.getElementById("external-search-error");
         const scoreInput = document.getElementById("external-search-score");
+        const isMainInput = document.getElementById("external-search-is-main");
         const item = externalSearchState.items[index];
         if (!item) {
             return;
@@ -1030,6 +1254,7 @@
                     year: item.year,
                     season: item.season,
                     score: scoreInput ? scoreInput.value.trim() : "",
+                    is_main: isMainInput ? !!isMainInput.checked : false,
                 }),
             });
             const data = await response.json();
@@ -1038,23 +1263,18 @@
             }
 
             const anime = data.anime;
+            const zone = anime.score && shouldShowInRanked(anime) ? "ranked" : "unscored";
             const wrapper = document.createElement("div");
-            wrapper.innerHTML = createCardHtml(anime, "unscored").trim();
+            wrapper.innerHTML = createCardHtml(anime, zone).trim();
             const card = wrapper.firstElementChild;
             if (!card) {
                 throw new Error("カード作成に失敗しました。");
             }
 
             attachCardEvents(card);
-            const zone = anime.score ? "ranked" : "unscored";
             if (zone === "ranked") {
-                const rankedGrid = document.getElementById("ranked-grid");
-                if (isRankSplitMode) {
-                    placeCardInRankBucket(card);
-                } else if (rankedGrid) {
-                    rankedGrid.prepend(card);
-                }
-            } else {
+                placeCardByCurrentFilter(card, anime);
+            } else if (!anime.score) {
                 const unscoredGrid = document.getElementById("unscored-grid");
                 if (unscoredGrid) {
                     unscoredGrid.prepend(card);
@@ -1075,23 +1295,38 @@
         const form = document.getElementById("inline-add-form");
         const panel = document.getElementById("inline-add-panel");
         const toggleBtn = document.getElementById("inline-add-toggle");
-        const hideBtn = document.getElementById("inline-add-hide");
-        if (!form || !panel || !toggleBtn || !hideBtn) {
+        const manualPanel = document.getElementById("manual-add-panel");
+        const manualToggleBtn = document.getElementById("manual-add-toggle");
+        const manualHideBtn = document.getElementById("manual-add-hide");
+        if (!form || !panel || !toggleBtn || !manualPanel || !manualToggleBtn || !manualHideBtn) {
             return;
         }
+
+        const setManualAddOpen = (open) => {
+            manualPanel.hidden = !open;
+            manualToggleBtn.textContent = open ? "手動追加を隠す" : "手動で追加する";
+            manualToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        };
 
         const setPanelOpen = (open) => {
             panel.hidden = !open;
             toggleBtn.textContent = open ? "追加フォームを隠す" : "追加フォームを表示";
             toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+            if (!open) {
+                setManualAddOpen(false);
+            }
         };
 
         toggleBtn.addEventListener("click", () => {
             setPanelOpen(panel.hidden);
         });
 
-        hideBtn.addEventListener("click", () => {
-            setPanelOpen(false);
+        manualToggleBtn.addEventListener("click", () => {
+            setManualAddOpen(manualPanel.hidden);
+        });
+
+        manualHideBtn.addEventListener("click", () => {
+            setManualAddOpen(false);
         });
 
         form.addEventListener("submit", (event) => {
@@ -1100,6 +1335,7 @@
         });
 
         setPanelOpen(false);
+        setManualAddOpen(false);
     }
 
     function setupExternalSearch() {
